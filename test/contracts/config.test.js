@@ -20,7 +20,7 @@ test('未提供配置时每个键都有默认值', () => {
   const result = Config['~standard'].validate(undefined);
   assert.equal(result.issues, undefined);
   assert.deepEqual(result.value, {
-    opponent: { mode: 'model', timeoutMs: 20000, maxRetries: 2, maxTokensPerMove: 256, maxTokensPerGame: 20000, candidateLimit: 40 },
+    opponent: { mode: 'model', timeoutMs: 60000, maxRetries: 2, maxTokensPerMove: 256, maxTokensPerGame: 20000, candidateLimit: 40 },
     local: { depth: 4, timeMs: 300, randomize: true },
     rules: { fiftyMovePlies: 120, perpetualCheckLoses: true, maxPlies: 400 },
     ui: { showCoordinates: true, showEval: false, animation: true, clock: 'off' },
@@ -81,5 +81,5 @@ test('normalizeConfig 与 validate 结果一致，且对非法输入仍给可用
   assert.deepEqual(normalizeConfig(input).value, Config['~standard'].validate(input).value);
   const broken = normalizeConfig({ opponent: { timeoutMs: 'x' } });
   assert.ok(broken.issues.length > 0);
-  assert.equal(broken.value.opponent.timeoutMs, 20000, '非法值必须回落到默认值，绝不能把坏值带进运行时');
+  assert.equal(broken.value.opponent.timeoutMs, 60000, '非法值必须回落到默认值，绝不能把坏值带进运行时');
 });

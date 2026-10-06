@@ -137,6 +137,27 @@ plugin_manager { action: "install_bundle", target: "/path/to/dsh-xiangqi-mate" }
 
 ---
 
+### 让模型对手回得更快
+
+插件是让**你当前会话正在用的模型**来走子的，并且沿用该会话的推理档位。如果模型是高推理档，
+一步棋可能超过默认预算：此时插件会等满 `opponent.timeoutMs`（默认 **60 秒**），然后改由
+**本地引擎**代走——面板会明确写出来（*「模型超时，已由本地引擎代走」*）。这条降级路径有测试
+覆盖，不是故障；但如果你确实想让模型来下，有两个旋钮：
+
+```yaml
+# 写进 profile 的 cordis.patch.yml
+- id: xiangqi
+  config:
+    opponent:
+      reasoningEffort: low     # 选一步棋不需要高推理档；提速与省额度都很明显
+      timeoutMs: 120000        # 给慢模型更多时间（客户端默认最多轮询 75 秒）
+```
+
+- `reasoningEffort` 可不填，表示跟随会话当前档位。若模型不接受该档位，插件会**不带档位**重试一次，所以填它是安全的。
+- `timeoutMs` 是**宿主侧**的预算；浏览器半只在宿主报告 `ai-thinking` 时继续轮询，到自己的上限（75 秒）才停。
+  上限刻意设得**更大**——"该等多久"的真相来源只有一个，就是宿主。
+- profile 若开了 `patchReload: live`，改配置**无需重启** DSH 即可生效。
+
 ## 配置
 
 改 profile 的 `cordis.patch.yml`（**注意：patch 覆盖 `config` 是整体替换，不是深合并——要保留的键必须重述**）：

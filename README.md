@@ -161,6 +161,32 @@ node scripts/perft.mjs --depth 4
 
 ---
 
+### Making the model opponent respond faster
+
+The plugin asks **the model your session is currently using** to move, at the session's own
+reasoning effort. With a high-effort reasoning model a single move can take longer than the
+default budget, in which case the plugin waits `opponent.timeoutMs` (default **60 s**) and then
+lets the **local engine** move instead — the panel says so explicitly
+(*"the model timed out; the local engine moved instead"*). That path is tested and is not an error,
+but if you want the model to actually play, two knobs help:
+
+```yaml
+# in your profile's cordis.patch.yml
+- id: xiangqi
+  config:
+    opponent:
+      reasoningEffort: low     # a chess move needs very little reasoning; big speed/ cost win
+      timeoutMs: 120000        # give a slow model more room (client polls up to 75 s by default)
+```
+
+- `reasoningEffort` is optional: leave it out to follow the session's selection. If the model
+  rejects the requested level, the plugin retries once **without** any effort hint, so setting it
+  is safe.
+- `timeoutMs` is the host-side budget. The browser half keeps polling while the host reports
+  `ai-thinking` and gives up at its own cap (75 s), which is deliberately **larger** — the host is
+  the single source of truth for "how long to wait".
+- Profiles with `patchReload: live` apply these config edits without restarting DSH.
+
 ## Development
 
 ```bash

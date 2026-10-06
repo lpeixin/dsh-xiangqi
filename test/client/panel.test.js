@@ -718,10 +718,10 @@ test('AI 超时提示：30 s 到点后停止轮询并在状态条说明', async 
       await app.drive();
       guard += 1;
     }
-    assert.ok(guard < 200, '轮询必须在 30 s 内收工，而不是无限轮下去');
+    assert.ok(guard < 200, '轮询必须在 75 s 内收工，而不是无限轮下去');
     assert.equal(pendingTimers(app.scheduled).length, 0);
-    assert.ok(elapsed >= 30000, `收工时间应越过 30 s，实际 ${elapsed} ms`);
-    assert.ok(elapsed < 35000, `收工不该拖太久，实际 ${elapsed} ms`);
+    assert.ok(elapsed >= 75000, `收工时间应越过 75 s，实际 ${elapsed} ms`);
+    assert.ok(elapsed < 80000, `收工不该拖太久，实际 ${elapsed} ms`);
     const nodes = (await app.drive()).nodes;
     assert.match(statusText(nodes), /本地引擎/, '超时后要提示可以点「由本地引擎代走」');
   } finally {

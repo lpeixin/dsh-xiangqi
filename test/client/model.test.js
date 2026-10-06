@@ -301,9 +301,9 @@ test('shouldPoll / pollExpired：只在该轮询时轮询，30 s 收工', () => 
   assert.equal(shouldPoll(fixture({ pending: 'ai-failed' }), true), false);
   assert.equal(shouldPoll(null, true), false);
 
-  assert.equal(POLL_TIMEOUT_MS, 30000);
+  assert.equal(POLL_TIMEOUT_MS, 75000, '必须大于宿主默认的 60 s 应招超时');
   assert.equal(pollExpired(29999), false);
-  assert.equal(pollExpired(30000), true);
+  assert.equal(pollExpired(75000), true);
   assert.equal(pollExpired(60000, 1000), true);
   assert.equal(pollExpired(undefined), false);
 });

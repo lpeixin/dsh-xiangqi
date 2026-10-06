@@ -87,7 +87,7 @@ test('30 s 到点收工：调用一次 onExpired，且不再排下一轮', () =>
   assert.equal(expired, 1, 'onExpired 只该触发一次');
   assert.equal(loop.isRunning(), false);
   assert.equal(scheduler.pending.length, 0, '超时后不该再排计时器');
-  assert.ok(scheduler.now() >= 30000, `假时钟应已越过 30 s，实际 ${scheduler.now()}`);
+  assert.ok(scheduler.now() >= 75000, `假时钟应已越过 75 s（客户端上限必须大于宿主 60 s 超时），实际 ${scheduler.now()}`);
   assert.ok(ticks >= 1);
   // 再推一次也什么都不会发生（dispose 前也不该复活）
   assert.equal(scheduler.runNext(), false);
