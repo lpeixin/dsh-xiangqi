@@ -1,3 +1,5 @@
+import { EventEmitter } from 'node:events';
+
 /**
  * 假 ctx：驱动 `apply(ctx, config)` 所需的最小 Cordis 上下文（§9.1「集成测试（无需 DSH）」）。
  *
@@ -6,11 +8,76 @@
  * 用于断言「逆序释放且幂等」。
  */
 
+/**
+ * 伪请求：`readBody` 会同步注册 `data`/`end`，所以这里在微任务里派发，行为与 Node 一致。
+ */
+class FakeRequest extends EventEmitter {
+  constructor(url, method, headers, body) {
+    super();
+    this.url = url;
+    this.method = method;
+    this.headers = headers;
+    const payload = body === undefined || body === null ? '' : String(body);
+    queueMicrotask(() => {
+      if (payload !== '') this.emit('data', Buffer.from(payload, 'utf8'));
+      this.emit('end');
+    });
+  }
+
+  destroy() {}
+}
+
+/** 伪响应：只记 status/headers/body。 */
+class FakeResponse {
+  constructor() {
+    this.status = 200;
+    this.headers = {};
+    this.body = '';
+  }
+
+  writeHead(status, headers) {
+    this.status = status;
+    if (headers !== undefined) this.headers = headers;
+  }
+
+  end(body) {
+    this.body = body === undefined || body === null ? '' : String(body);
+  }
+}
+
+/**
+ * 把一条前缀路由折成 `(endpoint, payload) → 业务结果` 的可调用对象。
+ *
+ * 关键在于它**真的走一遍 HTTP 处理代码**（`connection.admit` 鉴权、content-type 校验、
+ * 端点解析、JSON 编解码），而不是绕过去直接调业务函数——否则传输层的缺陷在测试里看不见。
+ */
+export function makeRouteCaller(route) {
+  return async (endpoint, payload) => {
+    // 发**真实**的信封（与 lib/client.js 里 connection 的客户端一致），
+    // 这样测试覆盖到信封的解析与归一化，而不只是业务函数。
+    const body = JSON.stringify({ type: 'client-request', rpcId: 'test-rpc', method: endpoint, payload });
+    const req = new FakeRequest(`${route.path}/${endpoint}`, 'POST', { 'content-type': 'application/json' }, body);
+    const res = new FakeResponse();
+    await route.handler(req, res);
+    if (res.status !== 200) return { ok: false, error: { code: `rpc/http-${res.status}`, message: res.body, details: {} } };
+    let envelope;
+    try {
+      envelope = JSON.parse(res.body);
+    } catch {
+      return { ok: false, error: { code: 'rpc/malformed', message: 'invalid JSON response', details: {} } };
+    }
+    if (envelope === null || typeof envelope !== 'object' || envelope.type !== 'server-response') {
+      return { ok: false, error: { code: 'rpc/malformed', message: 'invalid server-response envelope', details: {} } };
+    }
+    return envelope.result;
+  };
+}
+
 /** 建立一个可观测的伪服务注册表。 */
 export function createFakeCtx(options = {}) {
   const services = { ...(options.services ?? {}) };
   const disposalOrder = [];
-  const registrations = { tools: new Map(), commands: new Map(), skills: new Map(), rpc: new Map(), effects: [] };
+  const registrations = { tools: new Map(), commands: new Map(), skills: new Map(), rpc: new Map(), routes: new Map(), effects: [] };
   const logs = [];
   const activeDisposers = [];
 
@@ -57,15 +124,31 @@ export function createFakeCtx(options = {}) {
     };
   }
   if (services.connection === undefined && options.connection !== false) {
+    // 只模拟**真实可用**的那部分：`admit`（Host/Origin + 浏览器鉴权）。
+    // 刻意**不提供** `rpc.handle`——它在真实 DSH 里对任何调用方都抛
+    // `cannot get property "webServer" without inject`，因此假 ctx 也不该给它留位置：
+    // 如果将来有人把实现改回 `handle`，这里会立刻报错，而不是让测试假绿。
     services.connection = {
-      rpc: {
-        handle(channel, handler) {
-          registrations.rpc.set(channel, handler);
-          return async () => {
-            registrations.rpc.delete(channel);
-            disposalOrder.push(`rpc:${channel}`);
-          };
-        },
+      admit: () => ({ peer: {} }),
+      requestRejection: () => undefined,
+    };
+  }
+  if (services.webServer === undefined && options.webServer !== false) {
+    services.webServer = {
+      register(route) {
+        if (registrations.routes.has(route.path)) {
+          throw new Error(`webserver: duplicate ${route.kind} route "${route.path}"`);
+        }
+        registrations.routes.set(route.path, route);
+        // 把前缀路由折成一个「(endpoint, payload) → 结果」的可调用对象，
+        // 这样测试用的是**真实的 HTTP 处理代码**（鉴权、信封、端点解析都跑到），
+        // 而不是绕过它直接调业务函数。
+        registrations.rpc.set(route.path, makeRouteCaller(route));
+        return async () => {
+          registrations.routes.delete(route.path);
+          registrations.rpc.delete(route.path);
+          disposalOrder.push(`rpc:${route.path}`);
+        };
       },
     };
   }

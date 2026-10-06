@@ -322,6 +322,57 @@ DSH"），而不是把裸状态码丢给用户。普通网络故障仍是 `rpc/t
 > 这也是本条提示语里直接写出「请重启」的原因。
 
 
+### 2.10 405 的真根因：`connection.rpc.handle()` 在当前构建里对任何调用方都抛错
+
+上一节的时序判断**是错的**。我给宿主加了自检出口（把注册过程渲染进 `xiangqi_board` 正文，
+因为宿主没有可读日志、外部只看到 405），重启后一次工具调用就拿到了确切原因：
+
+```
+宿主自检：
+  [10:32:43.250] whenService connection: inject=true
+  [10:32:43.412] internal/service 事件触发 connection
+  [10:32:43.412] attachRpc: connection 可见，handle=function
+  [10:32:43.413] handle /xiangqi-mate   抛错： Error: cannot get property "webServer" without inject
+  [10:32:43.413] handle /xiangqi-mate-b 抛错： Error: cannot get property "webServer" without inject
+```
+
+**根因（对照 `@deepseek-ai/dsh-client-connection@0.2.0-rc.2` 源码）**：
+
+```js
+get rpc() { const owner = this.ctx; return { handle: (channel, handler) => this.register(owner, channel, handler) } }
+register(owner, channel, handler) { …; return owner.effect(() => owner.webServer.register(route), …) }  // ← owner 没 inject webServer
+```
+
+`owner = this.ctx` 是 **connection 插件自己的上下文**，而那个上下文只声明了
+`inject: ['credentials']`（外加组合行给的 `webRuntime`）——**没有 `webServer`**。
+Cordis 的服务属性访问受 `inject` 约束，于是 `owner.webServer` 必然抛错。
+
+对照**它自己**注册 `/api` 路由的写法（能工作）：
+
+```js
+ctx.inject(["webServer"], (webCtx) => { webCtx.effect(() => webCtx.webServer.register(route), "client-connection: /api route") })
+```
+
+**结论：`connection.rpc.handle()` 在该构建里对任何第三方插件都不可用。**
+另一条看似可行的 `connection.rpc.intercept('/api', …)` 也不可用——`/api` 的拦截器席位是**单一**的，
+已被 `@deepseek-ai/dsh-api-gateway` 占据（`connectionCtx.connection.rpc.intercept('/api', …)`）。
+
+**对策**：照 connection 自己那条**能工作**的写法，自行注册前缀路由：
+
+- 在 `ctx.inject(['connection', 'webServer'], …)` 的 fiber 里 `webCtx.effect(() => webCtx.webServer.register({ kind: 'prefix', path: '/xiangqi-mate', handler }))`；
+- 鉴权走文档化的 `connection.admit(request)`（"Apply Connection's Host/Origin checks and browser authentication to another Web route."），与 connection 自己的路由同款：拒绝就回 401/403；
+- **信封与 connection 完全一致**：请求 `{ type:'client-request', rpcId, method, payload }`、响应 `{ type:'server-response', rpcId, result }`。
+  因此**客户端一个字都不用改**（仍用 `ctx.connection.rpc.call`），却绕开了那个坏掉的 `handle`。
+
+实现在 [lib/game/rpc-route.js](../lib/game/rpc-route.js)（229 行）。三条注册路径互为备份：
+`inject` 等依赖就绪 / `internal/service` 服务提供事件 / 首次调用工具时惰性补偿（把"永久 405"降级为"调用一次即自愈"）。
+
+> **这条缺陷值得单独记一笔**：它的表现是"面板 45 秒内一切正常渲染、只有通信失败"，
+> 而失败被插件自己的 `try/catch` 吞成一个 warn；宿主没有可读日志，外部只能看到 405。
+> **把注册过程暴露成一个可读出口，是这次唯一真正解决问题的动作**——在此之前我提出的
+> 时序假设虽然合理，却是错的。教训：**当失败路径被 catch 静默时，先让它可观测，再谈修复。**
+
+
 ## 3. 工具契约（模型视角）
 
 | # | 检查 | 做法 | 期望 | 实测 | 结论 |

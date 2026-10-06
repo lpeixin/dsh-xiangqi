@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { Config, apply, inject, name, TOOL_NAMES } from '../../lib/index.js';
 import { stripComments } from '../helpers/source.mjs';
 import { bootstrap, tempCwd, testConfig } from '../helpers/bootstrap.mjs';
-import { createFakeCtx, makeAgent } from '../helpers/fake-ctx.mjs';
+import { createFakeCtx, makeAgent, makeRouteCaller as callRoute } from '../helpers/fake-ctx.mjs';
 import { testEngine } from '../helpers/engine.mjs';
 
 const LIB_DIR = fileURLToPath(new URL('../../lib/', import.meta.url));
@@ -84,9 +84,10 @@ test('disposer：逆序释放、幂等、且第二次调用不再有效果', asy
   const { ctx } = app;
   await app.dispose();
   const order = ctx.disposalOrder;
-  assert.equal(order.length, 9, `应有 6 工具 + 1 命令 + 1 RPC + 1 技能，实际 ${JSON.stringify(order)}`);
+  assert.equal(order.length, 10, `应有 6 工具 + 1 命令 + 1 RPC（effect + 显式收集两条记账）+ 1 技能，实际 ${JSON.stringify(order)}`);
   assert.deepEqual(order, [
     'skill:xiangqi-mate-playbook',
+    'effect:xiangqi-mate: /xiangqi-mate route',
     'rpc:/xiangqi-mate',
     'command:xiangqi',
     'tool:xiangqi_review',
@@ -99,7 +100,7 @@ test('disposer：逆序释放、幂等、且第二次调用不再有效果', asy
   assert.equal(ctx.registrations.tools.size, 0);
   assert.equal(ctx.registrations.rpc.size, 0);
   await app.dispose();
-  assert.equal(ctx.disposalOrder.length, 9, '重复 dispose 必须是 no-op');
+  assert.equal(ctx.disposalOrder.length, 10, '重复 dispose 必须是 no-op');
   await app.cleanup();
 });
 
@@ -340,45 +341,37 @@ async function listOwnSources() {
   return out;
 }
 
-test('connection 服务晚于本插件就绪时，RPC 通道仍会被注册（回归：面板 HTTP 405）', async () => {
-  // 真实的 Cordis 组合里，`connection` 由别的插件行提供，可能在本插件激活**之后**才就绪。
-  // 早先的实现是在 apply 时 `ctx.get('connection')` 取一次：那一刻拿到 undefined，于是
-  // RPC 通道被**永久静默跳过**——工具照常注册（"插件看起来是好的"），但浏览器半连不上，
-  // 面板显示 `与宿主通信失败：transport failure for /xiangqi-mate/state: HTTP 405`。
-  // 这个用例盯着两个方向：服务晚到要补注册，服务本来就在也要注册。
+test('服务晚于本插件就绪时，RPC 路由仍会被注册（回归：面板 HTTP 405）', async () => {
+  // 真实的 Cordis 组合里 `connection` / `webServer` 都由别的插件行提供，可能在本插件激活
+  // **之后**才就绪。早先的实现是在 apply 时 `ctx.get('connection')` 取一次：那一刻拿到
+  // undefined，于是 RPC 通道被**永久静默跳过**——工具照常注册（"插件看起来是好的"），
+  // 但浏览器半连不上，面板显示 `transport failure for /xiangqi-mate/state: HTTP 405`。
   const cwd = await tempCwd();
-  const ctx = createFakeCtx({ connection: false }); // ← apply 时刻意没有 connection
+  const ctx = createFakeCtx({ connection: false, webServer: false }); // ← apply 时刻意两个都没有
   const dispose = apply(ctx, testConfig({ saveDir: path.join(cwd, '.xiangqi-test') }));
 
-  assert.equal(
-    ctx.registrations.rpc.has('/xiangqi-mate'),
-    false,
-    'apply 时服务尚未就绪，此刻不应有通道（有的话说明是别的路径注册的）',
-  );
+  assert.equal(ctx.registrations.routes.has('/xiangqi-mate'), false, 'apply 时服务尚未就绪，此刻不应有路由');
 
-  // 服务随后上线：Cordis 会触发等待中的 inject 回调。
-  ctx.provide('connection', {
-    rpc: {
-      handle(channel, handler) {
-        ctx.registrations.rpc.set(channel, handler);
-        return async () => {
-          ctx.registrations.rpc.delete(channel);
-        };
-      },
+  // 服务随后上线（Cordis 会触发等待中的 inject 回调 / 广播 internal/service）
+  ctx.provide('connection', { admit: () => ({ peer: {} }), requestRejection: () => undefined });
+  ctx.provide('webServer', {
+    register(route) {
+      ctx.registrations.routes.set(route.path, route);
+      return async () => ctx.registrations.routes.delete(route.path);
     },
   });
+  ctx.emit('internal/service', 'connection', ctx.get('connection'));
 
   assert.equal(
-    ctx.registrations.rpc.has('/xiangqi-mate'),
+    ctx.registrations.routes.has('/xiangqi-mate'),
     true,
-    'connection 就绪后必须补上 RPC 注册，否则面板永远 405',
+    '服务就绪后必须补上 RPC 路由，否则面板永远 405',
   );
 
-  // 通道确实可用：随便打一个端点，应当得到结构化的（而非抛出的）应答。
-  const handler = ctx.registrations.rpc.get('/xiangqi-mate');
-  const reply = await handler('state', { sessionId: 'session-late' });
-  assert.equal(typeof reply, 'object');
-  assert.equal(reply.ok, true, `通道应可用，实际：${JSON.stringify(reply).slice(0, 120)}`);
+  // 路由确实可用：打一个端点，应当得到结构化的（而非抛出的）应答。
+  const route = ctx.registrations.routes.get('/xiangqi-mate');
+  const reply = await callRoute(route)('state', { sessionId: 'session-late' });
+  assert.equal(reply.ok, true, `路由应可用，实际：${JSON.stringify(reply).slice(0, 120)}`);
 
   await dispose();
   await rm(cwd, { recursive: true, force: true });
@@ -393,69 +386,32 @@ test('服务本来就绪时也必须注册（inject 的即时回调路径）', a
   }
 });
 
-test('RPC 通道有三条独立注册路径，任一可用即可（回归：面板 HTTP 405 长期不可恢复）', async () => {
-  // 真机上出现过：`ctx.inject(['connection'], cb)` 的回调**始终不触发**，于是面板永久 405。
-  // 只依赖单一机制是不可接受的，因此现在有三条路径：
-  //   1) whenService → ctx.inject 等依赖就绪
-  //   2) internal/service 服务就绪事件
-  //   3) 首次调用工具时惰性补偿（工具调用一定能到达宿主）
-  // 本用例用「inject 永不回调」的假 ctx 覆盖 2 与 3。
+test('首次调用工具时惰性补偿：把「面板永久 405」降级成「调用一次即自愈」', async () => {
+  // 工具调用**一定能到达宿主**，那一刻 connection/webServer 必然都已就绪。
+  // 因此即使 apply 期与事件期都没挂上路由，这里也要补上。
+  const cwd = await tempCwd();
+  const ctx = createFakeCtx({ connection: false, webServer: false });
+  const dispose = apply(ctx, testConfig({ saveDir: path.join(cwd, '.xiangqi-test') }));
+  assert.equal(ctx.registrations.routes.has('/xiangqi-mate'), false);
 
-  // ── 路径 2：服务就绪事件 ──────────────────────────────────────────────
-  {
-    const cwd = await tempCwd();
-    const ctx = createFakeCtx({ connection: false });
-    let injected = 0;
-    // 保留真实的 inject 语义记录，但**故意让它永不回调**（模拟真机表现）
-    ctx.inject = (keys, callback) => { injected += 1; return () => {}; };
-    const dispose = apply(ctx, testConfig({ saveDir: path.join(cwd, '.xiangqi-test') }));
-    assert.equal(injected > 0, true, 'apply 应当尝试过 ctx.inject');
-    assert.equal(ctx.registrations.rpc.has('/xiangqi-mate'), false, 'inject 未回调时此刻不应有通道');
+  // 宿主完全起来了（但**不发** internal/service 事件，模拟事件路径也没生效的极端情况）
+  ctx.provide('connection', { admit: () => ({ peer: {} }), requestRejection: () => undefined });
+  ctx.provide('webServer', {
+    register(route) {
+      ctx.registrations.routes.set(route.path, route);
+      return async () => ctx.registrations.routes.delete(route.path);
+    },
+  });
 
-    // 宿主把服务提供出来 → Cordis 广播 internal/service
-    ctx.provide('connection', {
-      rpc: {
-        handle(channel, handler) {
-          ctx.registrations.rpc.set(channel, handler);
-          return async () => {};
-        },
-      },
-    });
-    ctx.emit('internal/service', 'connection', ctx.get('connection'));
-    assert.equal(ctx.registrations.rpc.has('/xiangqi-mate'), true, '服务就绪事件必须把通道挂上（不依赖工具调用）');
+  const board = ctx.registrations.tools.get('xiangqi_board');
+  assert.equal(typeof board?.execute, 'function');
+  await board.execute({}, { agent: makeAgent({ id: 'session-self-heal', cwd }), signal: new AbortController().signal });
+  assert.equal(
+    ctx.registrations.routes.has('/xiangqi-mate'),
+    true,
+    '第一次调用工具后必须自愈',
+  );
 
-    await dispose();
-    await rm(cwd, { recursive: true, force: true });
-  }
-
-  // ── 路径 3：首次调用工具时惰性补偿 ────────────────────────────────────
-  {
-    const cwd = await tempCwd();
-    const ctx = createFakeCtx({ connection: false });
-    ctx.inject = () => () => {}; // 同样永不回调
-    const dispose = apply(ctx, testConfig({ saveDir: path.join(cwd, '.xiangqi-test') }));
-    assert.equal(ctx.registrations.rpc.has('/xiangqi-mate'), false);
-
-    // 宿主起来了（工具一定到达宿主，那时 connection 必然在位）
-    ctx.provide('connection', {
-      rpc: {
-        handle(channel, handler) {
-          ctx.registrations.rpc.set(channel, handler);
-          return async () => {};
-        },
-      },
-    });
-
-    const board = ctx.registrations.tools.get('xiangqi_board');
-    assert.equal(typeof board?.execute, 'function');
-    await board.execute({}, { agent: makeAgent({ id: 'session-self-heal', cwd }), signal: new AbortController().signal });
-    assert.equal(
-      ctx.registrations.rpc.has('/xiangqi-mate'),
-      true,
-      '第一次调用工具后必须自愈——把"永久 405"降级成"调用一次即恢复"',
-    );
-
-    await dispose();
-    await rm(cwd, { recursive: true, force: true });
-  }
+  await dispose();
+  await rm(cwd, { recursive: true, force: true });
 });
