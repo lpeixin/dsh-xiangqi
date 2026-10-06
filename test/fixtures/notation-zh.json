@@ -1,0 +1,282 @@
+{
+  "description": "中文记谱生成与解析（含消歧）；parse 里 iccs=null 表示应当报错，error 是期望的错误类别",
+  "generation": [
+    {
+      "name": "炮二平五",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "iccs": "h2e2",
+      "zh": "炮二平五"
+    },
+    {
+      "name": "马8进7（黑方走子）",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C2C4/9/RNBAKABNR b - - 1 1",
+      "iccs": "h9g7",
+      "zh": "马8进7"
+    },
+    {
+      "name": "车九进一",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "iccs": "a0a1",
+      "zh": "车九进一"
+    },
+    {
+      "name": "兵七进一",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "iccs": "c3c4",
+      "zh": "兵七进一"
+    },
+    {
+      "name": "前车进三（同列两车）",
+      "fen": "4k4/9/9/9/9/R8/9/R8/9/3K5 w - - 0 1",
+      "iccs": "a4a7",
+      "zh": "前车进三"
+    },
+    {
+      "name": "后车进一（同列两车）",
+      "fen": "4k4/9/9/9/9/R8/9/R8/9/3K5 w - - 0 1",
+      "iccs": "a2a3",
+      "zh": "后车进一"
+    },
+    {
+      "name": "前车平四（同列两车）",
+      "fen": "4k4/9/9/9/9/R8/9/R8/9/3K5 w - - 0 1",
+      "iccs": "a4f4",
+      "zh": "前车平四"
+    },
+    {
+      "name": "前兵进一（同列三兵）",
+      "fen": "4k4/9/4P4/9/4P4/9/4P4/9/9/3K5 w - - 0 1",
+      "iccs": "e7e8",
+      "zh": "前兵进一"
+    },
+    {
+      "name": "中兵进一（同列三兵）",
+      "fen": "4k4/9/4P4/9/4P4/9/4P4/9/9/3K5 w - - 0 1",
+      "iccs": "e5e6",
+      "zh": "中兵进一"
+    },
+    {
+      "name": "后兵进一（同列三兵）",
+      "fen": "4k4/9/4P4/9/4P4/9/4P4/9/9/3K5 w - - 0 1",
+      "iccs": "e3e4",
+      "zh": "后兵进一"
+    },
+    {
+      "name": "一兵进一（同列五兵）",
+      "fen": "4k4/7P1/7P1/7P1/7P1/7P1/9/9/9/3K5 w - - 0 1",
+      "iccs": "h8h9",
+      "zh": "一兵进一"
+    },
+    {
+      "name": "二兵进一（同列五兵）",
+      "fen": "4k4/7P1/7P1/7P1/7P1/7P1/9/9/9/3K5 w - - 0 1",
+      "iccs": "h7h8",
+      "zh": "二兵进一"
+    },
+    {
+      "name": "三兵进一（同列五兵）",
+      "fen": "4k4/7P1/7P1/7P1/7P1/7P1/9/9/9/3K5 w - - 0 1",
+      "iccs": "h6h7",
+      "zh": "三兵进一"
+    },
+    {
+      "name": "四兵进一（同列五兵）",
+      "fen": "4k4/7P1/7P1/7P1/7P1/7P1/9/9/9/3K5 w - - 0 1",
+      "iccs": "h5h6",
+      "zh": "四兵进一"
+    },
+    {
+      "name": "五兵进一（同列五兵）",
+      "fen": "4k4/7P1/7P1/7P1/7P1/7P1/9/9/9/3K5 w - - 0 1",
+      "iccs": "h4h5",
+      "zh": "五兵进一"
+    },
+    {
+      "name": "一马进三（同列三马）",
+      "fen": "4k4/9/4N4/9/9/4N4/9/9/4N4/3K5 w - - 0 1",
+      "iccs": "e7g8",
+      "zh": "一马进三"
+    },
+    {
+      "name": "二马进三（同列三马，§5.5 示例）",
+      "fen": "4k4/9/4N4/9/9/4N4/9/9/4N4/3K5 w - - 0 1",
+      "iccs": "e4g5",
+      "zh": "二马进三"
+    },
+    {
+      "name": "三马进三（同列三马）",
+      "fen": "4k4/9/4N4/9/9/4N4/9/9/4N4/3K5 w - - 0 1",
+      "iccs": "e1g2",
+      "zh": "三马进三"
+    },
+    {
+      "name": "前车进3（黑方同列两车，阿拉伯数字）",
+      "fen": "2k6/9/r8/9/9/r8/9/9/9/3K5 b - - 0 1",
+      "iccs": "a4a1",
+      "zh": "前车进3"
+    }
+  ],
+  "parse": [
+    {
+      "name": "炮二平五",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "input": "炮二平五",
+      "iccs": "h2e2",
+      "error": null
+    },
+    {
+      "name": "马8进7（黑方走子）",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C2C4/9/RNBAKABNR b - - 1 1",
+      "input": "马8进7",
+      "iccs": "h9g7",
+      "error": null
+    },
+    {
+      "name": "车九进一",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "input": "车九进一",
+      "iccs": "a0a1",
+      "error": null
+    },
+    {
+      "name": "兵七进一",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "input": "兵七进一",
+      "iccs": "c3c4",
+      "error": null
+    },
+    {
+      "name": "前车进三（同列两车）",
+      "fen": "4k4/9/9/9/9/R8/9/R8/9/3K5 w - - 0 1",
+      "input": "前车进三",
+      "iccs": "a4a7",
+      "error": null
+    },
+    {
+      "name": "后车进一（同列两车）",
+      "fen": "4k4/9/9/9/9/R8/9/R8/9/3K5 w - - 0 1",
+      "input": "后车进一",
+      "iccs": "a2a3",
+      "error": null
+    },
+    {
+      "name": "前车平四（同列两车）",
+      "fen": "4k4/9/9/9/9/R8/9/R8/9/3K5 w - - 0 1",
+      "input": "前车平四",
+      "iccs": "a4f4",
+      "error": null
+    },
+    {
+      "name": "前兵进一（同列三兵）",
+      "fen": "4k4/9/4P4/9/4P4/9/4P4/9/9/3K5 w - - 0 1",
+      "input": "前兵进一",
+      "iccs": "e7e8",
+      "error": null
+    },
+    {
+      "name": "中兵进一（同列三兵）",
+      "fen": "4k4/9/4P4/9/4P4/9/4P4/9/9/3K5 w - - 0 1",
+      "input": "中兵进一",
+      "iccs": "e5e6",
+      "error": null
+    },
+    {
+      "name": "后兵进一（同列三兵）",
+      "fen": "4k4/9/4P4/9/4P4/9/4P4/9/9/3K5 w - - 0 1",
+      "input": "后兵进一",
+      "iccs": "e3e4",
+      "error": null
+    },
+    {
+      "name": "一兵进一（同列五兵）",
+      "fen": "4k4/7P1/7P1/7P1/7P1/7P1/9/9/9/3K5 w - - 0 1",
+      "input": "一兵进一",
+      "iccs": "h8h9",
+      "error": null
+    },
+    {
+      "name": "一马进三（同列三马）",
+      "fen": "4k4/9/4N4/9/9/4N4/9/9/4N4/3K5 w - - 0 1",
+      "input": "一马进三",
+      "iccs": "e7g8",
+      "error": null
+    },
+    {
+      "name": "二马进三（同列三马，§5.5 示例）",
+      "fen": "4k4/9/4N4/9/9/4N4/9/9/4N4/3K5 w - - 0 1",
+      "input": "二马进三",
+      "iccs": "e4g5",
+      "error": null
+    },
+    {
+      "name": "三马进三（同列三马）",
+      "fen": "4k4/9/4N4/9/9/4N4/9/9/4N4/3K5 w - - 0 1",
+      "input": "三马进三",
+      "iccs": "e1g2",
+      "error": null
+    },
+    {
+      "name": "前车进3（黑方同列两车，阿拉伯数字）",
+      "fen": "2k6/9/r8/9/9/r8/9/9/9/3K5 b - - 0 1",
+      "input": "前车进3",
+      "iccs": "a4a1",
+      "error": null
+    },
+    {
+      "name": "黑方着法用阿拉伯数字",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C2C4/9/RNBAKABNR b - - 1 1",
+      "input": "马8进7",
+      "iccs": "h9g7",
+      "error": null
+    },
+    {
+      "name": "红方着法也接受阿拉伯数字",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "input": "车九进1",
+      "iccs": "a0a1",
+      "error": null
+    },
+    {
+      "name": "红方着法也接受中文数字写步数",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "input": "车九进一",
+      "iccs": "a0a1",
+      "error": null
+    },
+    {
+      "name": "该列没有这种子：无匹配",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "input": "炮三平五",
+      "iccs": null,
+      "error": "no-match"
+    },
+    {
+      "name": "路径被挡：无匹配",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "input": "车九进五",
+      "iccs": null,
+      "error": "no-match"
+    },
+    {
+      "name": "无法识别的写法",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "input": "飞龙在天",
+      "iccs": null,
+      "error": "unrecognized"
+    },
+    {
+      "name": "同列两车只写文件号产生歧义",
+      "fen": "4k4/9/9/9/9/R8/9/R8/9/3K5 w - - 0 1",
+      "input": "车九进一",
+      "iccs": null,
+      "error": "ambiguous"
+    },
+    {
+      "name": "轮到红方却写黑将",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+      "input": "将5进1",
+      "iccs": null,
+      "error": "wrong-side"
+    }
+  ]
+}

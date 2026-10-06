@@ -1,0 +1,92 @@
+{
+  "rule": "invalid-input",
+  "description": "非法输入返回结构化错误码，不抛异常",
+  "cases": [
+    {
+      "rule": "非法输入",
+      "name": "坐标越界（负数）",
+      "fen": "4k4/9/9/9/9/9/9/9/9/3K5 w - - 0 1",
+      "move": {
+        "from": -1,
+        "to": 4
+      },
+      "expectCode": "off-board",
+      "note": "结构化错误码，不抛异常"
+    },
+    {
+      "rule": "非法输入",
+      "name": "坐标越界（≥90）",
+      "fen": "4k4/9/9/9/9/9/9/9/9/3K5 w - - 0 1",
+      "move": {
+        "from": 0,
+        "to": 90
+      },
+      "expectCode": "off-board",
+      "note": "结构化错误码"
+    },
+    {
+      "rule": "非法输入",
+      "name": "起点无子",
+      "fen": "4k4/9/9/9/9/9/9/9/9/3K5 w - - 0 1",
+      "move": {
+        "from": 50,
+        "to": 40
+      },
+      "expectCode": "empty-from",
+      "note": "(5,5) 为空"
+    },
+    {
+      "rule": "非法输入",
+      "name": "动对方的子",
+      "fen": "4k4/9/9/9/9/9/9/9/9/3K5 w - - 0 1",
+      "move": {
+        "from": 4,
+        "to": 13
+      },
+      "expectCode": "not-your-piece",
+      "note": "红方回合动黑将"
+    },
+    {
+      "rule": "非法输入",
+      "name": "终点是己方子",
+      "fen": "4k4/9/9/9/9/4P4/4P4/9/9/3K5 w - - 0 1",
+      "move": {
+        "from": 58,
+        "to": 49
+      },
+      "expectCode": "own-piece-target",
+      "note": "(6,4) 的兵想吃 (5,4) 的己方兵"
+    },
+    {
+      "rule": "非法输入",
+      "name": "起点终点相同",
+      "fen": "4k4/9/9/9/9/4P4/4P4/9/9/3K5 w - - 0 1",
+      "move": {
+        "from": 58,
+        "to": 58
+      },
+      "expectCode": "no-movement",
+      "note": "原地不动"
+    },
+    {
+      "rule": "非法输入",
+      "name": "坐标不是整数",
+      "fen": "4k4/9/9/9/9/9/9/9/9/3K5 w - - 0 1",
+      "move": {
+        "from": "4",
+        "to": 13
+      },
+      "expectCode": "malformed-move",
+      "note": "字符串坐标"
+    },
+    {
+      "rule": "非法输入",
+      "name": "着法不是对象",
+      "fen": "4k4/9/9/9/9/9/9/9/9/3K5 w - - 0 1",
+      "move": "e0e1",
+      "raw": true,
+      "expectCode": "malformed-move",
+      "note": "直接传字符串"
+    }
+  ]
+}

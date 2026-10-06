@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Xiangqi Mate",
+    "description": "Play Chinese Chess against the model configured in your DSH session. A minimal board opens in the right panel; you play Red, the model plays Black, and a local engine covers timeouts and failures."
+  }
+}

@@ -1,0 +1,366 @@
+{
+  "rule": "movement",
+  "description": "§5.4 各子行棋方式；expectCode=null 表示应当合法",
+  "cases": [
+    {
+      "rule": "车",
+      "name": "车吃己方子被拒",
+      "fen": "4k4/9/4p4/9/4P4/4R4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e5",
+      "expectCode": "own-piece-target",
+      "note": "终点是自己兵"
+    },
+    {
+      "rule": "车",
+      "name": "车被己方子挡住",
+      "fen": "4k4/9/4p4/9/4P4/4R4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e6",
+      "expectCode": "blocked-path",
+      "note": "路径经 (4,4) 己方兵"
+    },
+    {
+      "rule": "车",
+      "name": "车横走且路径空",
+      "fen": "4k4/9/4p4/9/4P4/4R4/9/9/9/3K5 w - - 0 1",
+      "move": "e4g4",
+      "expectCode": null,
+      "note": "同行走子合法"
+    },
+    {
+      "rule": "车",
+      "name": "车纵向被己方子挡住",
+      "fen": "4k4/9/4p4/9/4P4/4R4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e8",
+      "expectCode": "blocked-path",
+      "note": "不能穿过己方兵"
+    },
+    {
+      "rule": "车",
+      "name": "车吃对方子",
+      "fen": "4k4/9/4p4/9/9/4R4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e7",
+      "expectCode": null,
+      "note": "第一个碰到的子可吃"
+    },
+    {
+      "rule": "车",
+      "name": "车越过对方子被拒",
+      "fen": "4k4/9/4p4/9/9/4R4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e8",
+      "expectCode": "blocked-path",
+      "note": "不能穿过第一个子"
+    },
+    {
+      "rule": "车",
+      "name": "车斜走被拒",
+      "fen": "4k4/9/4p4/9/9/4R4/9/9/9/3K5 w - - 0 1",
+      "move": "e4d5",
+      "expectCode": "not-a-rook-move",
+      "note": "车只能直线"
+    },
+    {
+      "rule": "马",
+      "name": "蹩马腿·上方",
+      "fen": "4k4/9/9/9/4p4/3pNp3/4p4/9/9/3K5 w - - 0 1",
+      "move": "e4d6",
+      "expectCode": "horse-leg-blocked",
+      "note": "马腿 (4,4) 有子"
+    },
+    {
+      "rule": "马",
+      "name": "蹩马腿·下方",
+      "fen": "4k4/9/9/9/4p4/3pNp3/4p4/9/9/3K5 w - - 0 1",
+      "move": "e4d2",
+      "expectCode": "horse-leg-blocked",
+      "note": "马腿 (6,4) 有子"
+    },
+    {
+      "rule": "马",
+      "name": "蹩马腿·左方",
+      "fen": "4k4/9/9/9/4p4/3pNp3/4p4/9/9/3K5 w - - 0 1",
+      "move": "e4c5",
+      "expectCode": "horse-leg-blocked",
+      "note": "马腿 (5,3) 有子"
+    },
+    {
+      "rule": "马",
+      "name": "蹩马腿·右方",
+      "fen": "4k4/9/9/9/4p4/3pNp3/4p4/9/9/3K5 w - - 0 1",
+      "move": "e4g5",
+      "expectCode": "horse-leg-blocked",
+      "note": "马腿 (5,5) 有子"
+    },
+    {
+      "rule": "马",
+      "name": "马走日字",
+      "fen": "4k4/9/9/9/9/4N4/9/9/9/3K5 w - - 0 1",
+      "move": "e4d6",
+      "expectCode": null,
+      "note": "马腿无子"
+    },
+    {
+      "rule": "马",
+      "name": "马走直线被拒",
+      "fen": "4k4/9/9/9/9/4N4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e6",
+      "expectCode": "not-a-horse-move",
+      "note": "不是日字"
+    },
+    {
+      "rule": "马",
+      "name": "马走田字被拒",
+      "fen": "4k4/9/9/9/9/4N4/9/9/9/3K5 w - - 0 1",
+      "move": "e4c6",
+      "expectCode": "not-a-horse-move",
+      "note": "不是日字"
+    },
+    {
+      "rule": "炮",
+      "name": "炮无架不吃子",
+      "fen": "5k3/4r4/9/9/9/4C4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e8",
+      "expectCode": "cannon-screen-missing",
+      "note": "目标有子但 0 炮架"
+    },
+    {
+      "rule": "炮",
+      "name": "炮不吃子时同车",
+      "fen": "5k3/4r4/9/9/9/4C4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e7",
+      "expectCode": null,
+      "note": "目标为空、路径无子"
+    },
+    {
+      "rule": "炮",
+      "name": "炮隔一架吃子",
+      "fen": "5k3/4r4/9/4p4/9/4C4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e8",
+      "expectCode": null,
+      "note": "恰好一个炮架"
+    },
+    {
+      "rule": "炮",
+      "name": "炮吃炮架本身被拒",
+      "fen": "5k3/4r4/9/4p4/9/4C4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e6",
+      "expectCode": "cannon-screen-missing",
+      "note": "吃炮架时 0 架"
+    },
+    {
+      "rule": "炮",
+      "name": "炮隔两架不吃子",
+      "fen": "5k3/4r4/9/4p4/4p4/4C4/9/9/9/3K5 w - - 0 1",
+      "move": "e4e8",
+      "expectCode": "cannon-screen-too-many",
+      "note": "两个炮架"
+    },
+    {
+      "rule": "炮",
+      "name": "炮平移吃子（隔一架）",
+      "fen": "5k3/9/9/9/9/4C1p1r/9/9/9/3K5 w - - 0 1",
+      "move": "e4i4",
+      "expectCode": null,
+      "note": "横向隔一个炮架吃车"
+    },
+    {
+      "rule": "炮",
+      "name": "炮平移无架不吃子",
+      "fen": "5k3/9/9/9/9/4C1p1r/9/9/9/3K5 w - - 0 1",
+      "move": "e4g4",
+      "expectCode": "cannon-screen-missing",
+      "note": "吃炮架本身"
+    },
+    {
+      "rule": "炮",
+      "name": "炮斜走被拒",
+      "fen": "5k3/9/9/9/9/4C1p1r/9/9/9/3K5 w - - 0 1",
+      "move": "e4f5",
+      "expectCode": "not-a-cannon-move",
+      "note": "炮只能直线"
+    },
+    {
+      "rule": "相",
+      "name": "塞象眼",
+      "fen": "4k4/9/9/9/9/9/9/9/3p5/2BK5 w - - 0 1",
+      "move": "c0e2",
+      "expectCode": "elephant-eye-blocked",
+      "note": "田字中心 (8,3) 有子"
+    },
+    {
+      "rule": "相",
+      "name": "相走田字",
+      "fen": "4k4/9/9/9/9/9/9/9/9/2BK5 w - - 0 1",
+      "move": "c0e2",
+      "expectCode": null,
+      "note": "象眼无子"
+    },
+    {
+      "rule": "相",
+      "name": "相走一步被拒",
+      "fen": "4k4/9/9/9/9/9/9/9/9/2BK5 w - - 0 1",
+      "move": "c0d1",
+      "expectCode": "not-an-elephant-move",
+      "note": "不是田字"
+    },
+    {
+      "rule": "相",
+      "name": "红相过河被拒",
+      "fen": "4k4/9/9/9/9/4B4/9/9/9/3K5 w - - 0 1",
+      "move": "e4c6",
+      "expectCode": "elephant-crosses-river",
+      "note": "红相只能留在 row 5–9"
+    },
+    {
+      "rule": "象",
+      "name": "黑象过河被拒",
+      "fen": "4k4/9/9/9/2b6/9/9/9/9/3K5 b - - 0 1",
+      "move": "c5e3",
+      "expectCode": "elephant-crosses-river",
+      "note": "黑象只能留在 row 0–4"
+    },
+    {
+      "rule": "仕",
+      "name": "仕出九宫被拒",
+      "fen": "4k4/9/9/9/9/9/9/3A1A3/9/3K5 w - - 0 1",
+      "move": "d2c3",
+      "expectCode": "advisor-out-of-palace",
+      "note": "(7,3)→(6,2) 走出九宫"
+    },
+    {
+      "rule": "仕",
+      "name": "仕九宫内斜走",
+      "fen": "4k4/9/9/9/9/9/9/3A1A3/9/3K5 w - - 0 1",
+      "move": "d2e1",
+      "expectCode": null,
+      "note": "仍在九宫"
+    },
+    {
+      "rule": "仕",
+      "name": "仕直走被拒",
+      "fen": "4k4/9/9/9/9/9/9/3A1A3/9/3K5 w - - 0 1",
+      "move": "d2d1",
+      "expectCode": "not-an-advisor-move",
+      "note": "仕只能斜走"
+    },
+    {
+      "rule": "帅",
+      "name": "帅出九宫被拒",
+      "fen": "4k4/9/9/9/9/9/9/9/9/3K5 w - - 0 1",
+      "move": "d0c0",
+      "expectCode": "king-out-of-palace",
+      "note": "(9,3)→(9,2) 出九宫"
+    },
+    {
+      "rule": "帅",
+      "name": "帅九宫内直走",
+      "fen": "4k4/9/9/9/9/9/9/9/9/3K5 w - - 0 1",
+      "move": "d0d1",
+      "expectCode": null,
+      "note": "九宫内一格"
+    },
+    {
+      "rule": "帅",
+      "name": "帅走两格被拒",
+      "fen": "4k4/9/9/9/9/9/9/9/9/3K5 w - - 0 1",
+      "move": "d0d2",
+      "expectCode": "not-a-king-move",
+      "note": "帅只能走一格"
+    },
+    {
+      "rule": "兵",
+      "name": "红兵未过河不能横走",
+      "fen": "4k4/9/9/4P4/9/9/4P4/9/9/4K4 w - - 0 1",
+      "move": "e3d3",
+      "expectCode": "pawn-sideways-before-river",
+      "note": "row6 尚未过河"
+    },
+    {
+      "rule": "兵",
+      "name": "红兵未过河不能后退",
+      "fen": "4k4/9/9/4P4/9/9/4P4/9/9/4K4 w - - 0 1",
+      "move": "e3e2",
+      "expectCode": "pawn-backward",
+      "note": "红方后退 = rank 变小"
+    },
+    {
+      "rule": "兵",
+      "name": "红兵未过河向前",
+      "fen": "4k4/9/9/9/9/9/4P4/9/9/4K4 w - - 0 1",
+      "move": "e3e4",
+      "expectCode": null,
+      "note": "rank 变大即向前"
+    },
+    {
+      "rule": "兵",
+      "name": "红兵过河后可横走",
+      "fen": "4k4/9/9/4P4/9/9/4P4/9/9/4K4 w - - 0 1",
+      "move": "e6d6",
+      "expectCode": null,
+      "note": "row3 已过河"
+    },
+    {
+      "rule": "兵",
+      "name": "红兵过河后不能后退",
+      "fen": "4k4/9/9/4P4/9/9/4P4/9/9/4K4 w - - 0 1",
+      "move": "e6e5",
+      "expectCode": "pawn-backward",
+      "note": "过河也不能退"
+    },
+    {
+      "rule": "兵",
+      "name": "红兵过河向前",
+      "fen": "4k4/9/9/4P4/9/9/4P4/9/9/4K4 w - - 0 1",
+      "move": "e6e7",
+      "expectCode": null,
+      "note": "继续推进"
+    },
+    {
+      "rule": "卒",
+      "name": "黑卒未过河不能横走",
+      "fen": "3k5/9/9/4p4/9/9/4p4/9/9/4K4 b - - 0 1",
+      "move": "e6d6",
+      "expectCode": "pawn-sideways-before-river",
+      "note": "row3 未过河"
+    },
+    {
+      "rule": "卒",
+      "name": "黑卒未过河向前",
+      "fen": "3k5/9/9/4p4/9/9/4p4/9/9/4K4 b - - 0 1",
+      "move": "e6e5",
+      "expectCode": null,
+      "note": "黑方向前 = rank 变小"
+    },
+    {
+      "rule": "卒",
+      "name": "黑卒未过河不能后退",
+      "fen": "3k5/9/9/4p4/9/9/4p4/9/9/4K4 b - - 0 1",
+      "move": "e6e7",
+      "expectCode": "pawn-backward",
+      "note": "永不后退"
+    },
+    {
+      "rule": "卒",
+      "name": "黑卒过河后可横走",
+      "fen": "3k5/9/9/4p4/9/9/4p4/9/9/4K4 b - - 0 1",
+      "move": "e3d3",
+      "expectCode": null,
+      "note": "row6 已过河"
+    },
+    {
+      "rule": "卒",
+      "name": "黑卒过河后不能后退",
+      "fen": "3k5/9/9/4p4/9/9/4p4/9/9/4K4 b - - 0 1",
+      "move": "e3e4",
+      "expectCode": "pawn-backward",
+      "note": "过河也不能退"
+    },
+    {
+      "rule": "卒",
+      "name": "黑卒过河向前",
+      "fen": "3k5/9/9/4p4/9/9/4p4/9/9/4K4 b - - 0 1",
+      "move": "e3e2",
+      "expectCode": null,
+      "note": "继续推进"
+    }
+  ]
+}

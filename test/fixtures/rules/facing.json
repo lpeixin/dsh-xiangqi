@@ -1,0 +1,110 @@
+{
+  "rule": "facing-check",
+  "description": "将帅照面 / 送将 / 应将",
+  "cases": [
+    {
+      "rule": "将帅照面",
+      "name": "红方横向让路造成照面",
+      "fen": "4k4/9/9/9/4P4/9/9/9/9/4K4 w - - 0 1",
+      "move": "e5d5",
+      "expectCode": "king-facing",
+      "note": "挡子离开 e 线即露帅"
+    },
+    {
+      "rule": "将帅照面",
+      "name": "红方挡子沿 e 线前进仍挡着",
+      "fen": "4k4/9/9/9/4P4/9/9/9/9/4K4 w - - 0 1",
+      "move": "e5e6",
+      "expectCode": null,
+      "note": "仍在两将之间，故合法"
+    },
+    {
+      "rule": "将帅照面",
+      "name": "黑方横向让路造成照面",
+      "fen": "4k4/9/9/9/9/4p4/9/9/9/4K4 b - - 0 1",
+      "move": "e4d4",
+      "expectCode": "king-facing",
+      "note": "已过河的黑卒横走露将"
+    },
+    {
+      "rule": "将帅照面",
+      "name": "不在中线上的子仍可走",
+      "fen": "4k4/9/9/9/4P4/8R/9/9/9/4K4 w - - 0 1",
+      "move": "i4i5",
+      "expectCode": null,
+      "note": "与照面无关的着法合法"
+    },
+    {
+      "rule": "应将",
+      "name": "被将军时走无关子被拒",
+      "fen": "4r4/5k3/9/9/9/R8/9/9/9/4K4 w - - 0 1",
+      "move": "a4a5",
+      "expectCode": "self-check",
+      "note": "红帅仍被 e 线车照住"
+    },
+    {
+      "rule": "应将",
+      "name": "垫子解将",
+      "fen": "4r4/5k3/9/9/9/R8/9/9/9/4K4 w - - 0 1",
+      "move": "a4e4",
+      "expectCode": null,
+      "note": "横向垫到 e 线"
+    },
+    {
+      "rule": "应将",
+      "name": "帅横向避开",
+      "fen": "4r4/5k3/9/9/9/R8/9/9/9/4K4 w - - 0 1",
+      "move": "e0d0",
+      "expectCode": null,
+      "note": "离开 e 线"
+    },
+    {
+      "rule": "应将",
+      "name": "帅沿 e 线移动仍被将军",
+      "fen": "4r4/5k3/9/9/9/R8/9/9/9/4K4 w - - 0 1",
+      "move": "e0e1",
+      "expectCode": "self-check",
+      "note": "仍在车口上"
+    },
+    {
+      "rule": "应将",
+      "name": "吃掉将军的子",
+      "fen": "R3r4/3k5/9/9/9/9/9/9/9/4K4 w - - 0 1",
+      "move": "a9e9",
+      "expectCode": null,
+      "note": "车吃车解将"
+    },
+    {
+      "rule": "送将",
+      "name": "被牵制的马不能动",
+      "fen": "3kr4/9/9/9/9/4N4/9/9/9/4K4 w - - 0 1",
+      "move": "e4d6",
+      "expectCode": "self-check",
+      "note": "马是唯一挡子"
+    },
+    {
+      "rule": "送将",
+      "name": "无谓走子导致仍被将",
+      "fen": "3kr4/9/9/9/9/R8/9/9/9/4K4 w - - 0 1",
+      "move": "a4a5",
+      "expectCode": "self-check",
+      "note": "随便走一步仍被将"
+    },
+    {
+      "rule": "送将",
+      "name": "帅避开 e 线是合法的",
+      "fen": "2k1r4/9/9/9/9/9/9/9/9/4K4 w - - 0 1",
+      "move": "e0d0",
+      "expectCode": null,
+      "note": "d0 不在车口上"
+    },
+    {
+      "rule": "送将",
+      "name": "帅沿车线移动被拒",
+      "fen": "2k1r4/9/9/9/9/9/9/9/9/4K4 w - - 0 1",
+      "move": "e0e1",
+      "expectCode": "self-check",
+      "note": "仍在 e 线"
+    }
+  ]
+}

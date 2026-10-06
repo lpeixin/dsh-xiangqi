@@ -1,0 +1,16 @@
+# 临时与产物
+node_modules/
+*.log
+.DS_Store
+.xiangqi-mate/
+
+# 测试与审计产物
+coverage/
+.nyc_output/
+.qualityforge/
+.project-compass/
+
+# 编辑器
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,138 @@
+{
+  "description": "§5.4 局面状态：将死 / 困毙 / 三次重复 / 长将 / 自然限着",
+  "cases": [
+    {
+      "rule": "将死",
+      "name": "双车错：黑将贴边被将死",
+      "fen": "R3k4/9/4R4/9/9/9/9/9/9/4K4 b - - 0 1",
+      "history": null,
+      "expect": {
+        "state": "checkmate",
+        "winner": "r",
+        "reason": "checkmate"
+      },
+      "note": "横车将、纵车封顶线"
+    },
+    {
+      "rule": "将死",
+      "name": "马后车：马将 + 车封退路",
+      "fen": "R3k4/8R/3N5/9/9/9/9/9/9/3K5 b - - 0 1",
+      "history": null,
+      "expect": {
+        "state": "checkmate",
+        "winner": "r",
+        "reason": "checkmate"
+      },
+      "note": "马在 (2,3) 将，车控第 1 行与底线"
+    },
+    {
+      "rule": "困毙",
+      "name": "黑将未被将但无着法（双马控门）",
+      "fen": "4k4/9/2N3N2/9/9/9/9/9/9/3K5 b - - 0 1",
+      "history": null,
+      "expect": {
+        "state": "stalemate",
+        "winner": "r",
+        "reason": "stalemate"
+      },
+      "note": "困毙判负，winner 必须是红方"
+    },
+    {
+      "rule": "困毙",
+      "name": "兵马控门，黑将无着法且未被将军",
+      "fen": "4k4/3P1P3/9/3N5/9/9/9/9/9/3K5 b - - 0 1",
+      "history": null,
+      "expect": {
+        "state": "stalemate",
+        "winner": "r",
+        "reason": "stalemate"
+      },
+      "note": "两兵控底线两格、马控中路，黑将未被将军"
+    },
+    {
+      "rule": "三次重复",
+      "name": "马往返两次构成三次重复",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 8 5",
+      "history": [
+        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C4NC1/9/RNBAKAB1R b - - 1 1",
+        "rnbakab1r/9/1c4nc1/p1p1p1p1p/9/9/P1P1P1P1P/1C4NC1/9/RNBAKAB1R w - - 2 2",
+        "rnbakab1r/9/1c4nc1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR b - - 3 2",
+        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 4 3",
+        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C4NC1/9/RNBAKAB1R b - - 5 3",
+        "rnbakab1r/9/1c4nc1/p1p1p1p1p/9/9/P1P1P1P1P/1C4NC1/9/RNBAKAB1R w - - 6 4",
+        "rnbakab1r/9/1c4nc1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR b - - 7 4"
+      ],
+      "expect": {
+        "state": "draw-repetition",
+        "winner": null,
+        "reason": "repetition"
+      },
+      "note": "同一局面（含走子方）第 3 次出现"
+    },
+    {
+      "rule": "三次重复",
+      "name": "仅出现两次时不判和",
+      "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C4NC1/9/RNBAKAB1R b - - 5 3",
+      "history": [
+        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",
+        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C4NC1/9/RNBAKAB1R b - - 1 1",
+        "rnbakab1r/9/1c4nc1/p1p1p1p1p/9/9/P1P1P1P1P/1C4NC1/9/RNBAKAB1R w - - 2 2",
+        "rnbakab1r/9/1c4nc1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR b - - 3 2",
+        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 4 3"
+      ],
+      "expect": {
+        "state": "playing",
+        "winner": null,
+        "reason": "playing"
+      },
+      "note": "第 2 次出现，对局继续"
+    },
+    {
+      "rule": "长将",
+      "name": "红车长将判负",
+      "fen": "4k4/9/9/9/9/4R4/9/9/9/3K5 b - - 9 5",
+      "history": [
+        "4k4/9/9/9/9/R8/9/9/9/3K5 w - - 0 1",
+        "4k4/9/9/9/9/4R4/9/9/9/3K5 b - - 1 1",
+        "5k3/9/9/9/9/4R4/9/9/9/3K5 w - - 2 2",
+        "5k3/9/9/9/9/5R3/9/9/9/3K5 b - - 3 2",
+        "4k4/9/9/9/9/5R3/9/9/9/3K5 w - - 4 3",
+        "4k4/9/9/9/9/4R4/9/9/9/3K5 b - - 5 3",
+        "5k3/9/9/9/9/4R4/9/9/9/3K5 w - - 6 4",
+        "5k3/9/9/9/9/5R3/9/9/9/3K5 b - - 7 4",
+        "4k4/9/9/9/9/5R3/9/9/9/3K5 w - - 8 5"
+      ],
+      "expect": {
+        "state": "draw-perpetual-check",
+        "winner": "b",
+        "reason": "perpetual-check"
+      },
+      "note": "红方每步都在将军 ⇒ 红负"
+    },
+    {
+      "rule": "自然限着",
+      "name": "满 120 半回合无吃子判和",
+      "fen": "4k4/9/9/9/9/8R/9/9/9/3K5 w - - 120 61",
+      "history": null,
+      "expect": {
+        "state": "draw-fifty",
+        "winner": null,
+        "reason": "fifty-move"
+      },
+      "note": "halfmove = 120 恰好触发"
+    },
+    {
+      "rule": "自然限着",
+      "name": "119 半回合尚未判和",
+      "fen": "4k4/9/9/9/9/8R/9/9/9/3K5 w - - 119 61",
+      "history": null,
+      "expect": {
+        "state": "playing",
+        "winner": null,
+        "reason": "playing"
+      },
+      "note": "差一个半回合"
+    }
+  ]
+}

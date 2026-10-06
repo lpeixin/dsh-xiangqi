@@ -1,0 +1,68 @@
+{
+  "name": "dsh-xiangqi-mate",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness bundle: 象棋对弈助手 / Xiangqi Mate — a human-vs-AI Chinese Chess plugin. Open the panel and a minimal board appears; you play Red, the model configured in your DSH session plays Black. Zero runtime dependencies, no build step for the host half.",
+  "type": "module",
+  "license": "MIT",
+  "author": "lpeixin",
+  "icon": "assets/icon.svg",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "lib",
+    "assets",
+    "locale",
+    "docs",
+    "scripts",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "test": "node --test",
+    "coverage": "node --test --experimental-test-coverage",
+    "build:client": "node scripts/build-client.mjs",
+    "check:client": "node scripts/build-client.mjs --check",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "perft": "node scripts/perft.mjs --depth 3",
+    "smoke": "node scripts/xiangqi-cli.mjs play --moves 60",
+    "validate": "node scripts/check-boundaries.mjs && node scripts/build-client.mjs --check && node --test"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "xiangqi",
+    "chinese-chess",
+    "chess",
+    "board-game",
+    "human-vs-ai"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  }
+}
