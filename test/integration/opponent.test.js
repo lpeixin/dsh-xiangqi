@@ -367,3 +367,26 @@ test('全链路：revision 栅栏 —— 模型结果晚到时不落子，也不
   assert.equal(final.pending, null);
   assert.equal(engine.positionToFen(engine.positionFromFen(final.fen)) === final.fen, true);
 });
+
+test('Config 的 reasoningEffort 可以单独生效（只填档位也必须有用）', async () => {
+  // 曾经的坑：第 1 级要求 provider 与 model **同时**给出，否则整级跳过，
+  // 于是「只填 opponent.reasoningEffort 让它快一点」完全没有效果，用户却看不出任何反馈。
+  // 档位恰恰是最常被单独调的那一个，所以它必须能单独覆盖。
+  const projections = { stateOf: () => ({ pending: { provider: 'sess', model: 'sess-m', reasoningEffort: 'high' } }) };
+  const ctx = { get: (name) => (name === 'sessionProjections' ? projections : undefined) };
+  const agent = { session: {} };
+
+  const onlyEffort = await resolveRoute(ctx, { opponent: { reasoningEffort: 'low' } }, agent);
+  assert.equal(onlyEffort.provider, 'sess', 'provider 仍来自会话解析');
+  assert.equal(onlyEffort.model, 'sess-m', 'model 仍来自会话解析');
+  assert.equal(onlyEffort.reasoningEffort, 'low', '只填档位必须生效');
+  assert.match(onlyEffort.source, /config\.effort/, 'source 要能看出档位被 Config 覆盖过');
+
+  // 完整覆盖（provider + model + 档位）优先级最高。
+  const full = await resolveRoute(ctx, { opponent: { provider: 'cfg', model: 'cfg-m', reasoningEffort: 'minimal' } }, agent);
+  assert.deepEqual([full.provider, full.model, full.reasoningEffort], ['cfg', 'cfg-m', 'minimal']);
+
+  // 未配置档位时沿用会话档位。
+  const none = await resolveRoute(ctx, { opponent: {} }, agent);
+  assert.equal(none.reasoningEffort, 'high');
+});
