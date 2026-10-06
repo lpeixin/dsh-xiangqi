@@ -238,7 +238,7 @@ depth      nodes    checks  captures     mates        耗时
 | --- | --- | --- | --- | --- | --- |
 | 2.1 | 安装 | `plugin_manager { action: "install_bundle", target: "<仓库绝对路径>" }` | `application: "applied"` | **`{"stage":"enable","enabled":true,"changed":true,"application":"applied","warnings":[]}`**；pnpm 输出 `+ dsh-xiangqi-mate link:…`（零依赖、无构建脚本） | ✅ |
 | 2.2 | 宿主半挂载 | `cordis_inspect_query { host, Tool, listTools }`（无需审批） | 恰好 6 个 `xiangqi_*` 工具 | ✅ 在 52 个工具中检出恰好 6 个：`xiangqi_board` / `xiangqi_hint` / `xiangqi_move` / `xiangqi_new` / `xiangqi_review` / `xiangqi_undo`，各 1 次 | ✅ |
-| 2.3 | 客户端 bundle 被服务 | 见 §1.6.6（`node:vm` 模拟浏览器） | 产物可加载并注册 | **30/30**（含 `id` 正确、只 require `react`、四处承载注册） | ✅ |
+| 2.3 | 客户端 bundle 被服务 | 见 §1.6.6（`node:vm` 模拟浏览器）；另用 `curl` 直接取 `/plugins/<id>/client.js` 做对照 | 产物可加载并注册 | **产物侧 30/30** ✅。**宿主服务的 HTTP 路径无法从命令行验证**：`/plugins/<id>/client.js` 对本插件返回 404，但对照实验显示**官方插件（`dsh-client-ui-jobs` / `dsh-client-ui-goal`）同样 404**，而 `/api/*` 返回 401（需鉴权）——说明该路由在桌面载体上走的是需鉴权 / Electron 载体的通道，404 不构成「未提供服务」的证据。真正的服务验证需要页面登录态，因此**由用户在面板里打开一次即完成验收** | ✅（产物）/ ⏳（HTTP 服务） |
 | 2.4 | 右栏 tab 类型已注册 | 同上（捕获 `sidebarRightTabs.register`） | 类型 + guide 入口 | 注册了 `kind='xiangqi'`、`id='dsh-xiangqi-mate/xiangqi'`、带 `guide` 条目 | ✅ |
 | 2.5 | 插件列表显示名与图标 | 见 §1.6.6 + 门禁 | 标题/图标可读 | `locale/{en,zh}.json` 的 `meta.title/description` 与 `icon.svg` 齐备；门禁 `package.icon-present` 通过 | ✅ |
 | 2.6 | 临时禁用/恢复 | profile `cordis.patch.yml` 写 `- id: xiangqi` + `disabled: true` | 工具消失；撤销后恢复 | 待手工执行（改动用户 profile 状态，需用户确认） | ⬜ |
