@@ -148,3 +148,19 @@ test('状态条、着法列表与焦点环都有显式样式（§7.4/§7.7）', 
     assert.match(CSS, ring, `${selector} 去掉了默认外框却没补主题焦点环`);
   }
 });
+
+test('布局不变量：着法变多时缩小的必须是着法块，不能是棋盘', () => {
+  // 棋盘按 .xq-boardArea 的实测高度缩放，所以任何会随内容长高的兄弟节点都会把棋盘挤小。
+  // 曾经的写法给 .xq-movesList 写死 max-height:168px —— 棋谱一长，长高的是着法块，缩小的却是棋盘。
+  const area = /\.xq-boardArea\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
+  assert.match(area, /min-height:\s*\d+px/, '棋盘区必须有高度下限，否则会被着法块挤到很小');
+
+  const moves = /\.xq-moves\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
+  assert.match(moves, /flex:\s*0\s+1\s+auto/, '着法块必须可收缩（flex-shrink），否则抢走棋盘的空间');
+  assert.match(moves, /max-height:\s*\d+%/, '着法块必须有高度上限，不能无限长高');
+
+  const list = /\.xq-movesList\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
+  assert.match(list, /overflow-y:\s*auto/, '着法列表要在自己的区域内滚动');
+  assert.match(list, /flex:\s*1\s+1\s+auto/, '着法列表的高度应由父容器决定');
+  assert.doesNotMatch(list, /max-height:\s*\d+px/, '不要再写死列表高度——那正是棋盘被挤小的原因');
+});
