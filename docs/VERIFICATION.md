@@ -268,6 +268,60 @@ depth      nodes    checks  captures     mates        耗时
    也就是说：**我们比两个同类第三方插件多了一层激活期校验，代价是 schema 不可被工具链发现**。用户需要按 README 里列出的键在 profile 补丁里手写配置。若将来要把配置搬进设置界面，唯一正路是改用 `@deepseek-ai/schemastery`——那是一次**有意的 v0.2 决策**（要重新评估 R1），不该靠伪造 `Symbol.for('schemastery')` 标记去骗过投影器。
 
 
+### 2.9 面板报 `HTTP 405` 的根因与修复（真机发现，最重要的一条安装期缺陷）
+
+**症状**（用户截图）：面板完全渲染出来（棋盘、工具栏、状态条、标题都在），但状态条显示
+
+```
+与宿主通信失败：transport failure for /xiangqi-mate/state: HTTP 405
+```
+
+**解读**：405 = 「请求到达了服务端，但那条路由不接受这个方法」，即**宿主半的 RPC 通道没有注册**。
+这与「工具能用、只有面板连不上」完全吻合——工具的注册与 RPC 的注册是两段独立代码。
+
+**根因**：`lib/index.js` 在 `apply()` 里用 `ctx.get('connection')` **取了一次**服务：
+
+```js
+const connection = ctx?.get?.('connection');          // ← Cordis 的 ctx.get 不等待
+if (connection !== undefined && ...) { push('rpc', connection.rpc.handle(...)) }
+```
+
+`connection` 由**别的插件行**提供，可能在本插件激活**之后**才就绪。那一刻 `ctx.get()` 返回
+`undefined`，于是 RPC 注册被**永久静默跳过**——没有任何报错，工具照常注册，插件"看起来是好的"。
+
+**离线复现**（`/tmp/repro-rpc-late.mjs`，模拟服务晚到）：修复前 `注册数 = 0`，且代码根本没调用过
+`ctx.inject`（等待中的 inject = 0）；修复后两条路径（即时可用 / 晚到）都注册成功，3/3。
+
+**修复**：新增 `whenService(ctx, name, attach)`，用 Cordis 的 `ctx.inject([name], cb)` **等**服务就绪
+（服务消失会收起、再出现重新注册），仅在极简 ctx 没有 `inject` 时退化成直接尝试一次。
+
+**系统性排查**（同类写法一并修掉，避免下次换个服务再犯）：
+
+| apply 期读服务的位置 | 结论 |
+| --- | --- |
+| `tools` | ✅ 无需改：它是 `inject: ['tools']` 的硬依赖，Cordis 保证就绪 |
+| `connection` | ❌ **就是本次的 bug** → 已改为 `whenService` |
+| `commands` | ❌ 同样的"晚到即永久跳过"（只是不会像 405 那样显眼，`/xiangqi` 命令会静默消失）→ 已改为 `whenService` |
+| `skills` | ❌ 同上（技能静默不注册）→ 已改为 `whenService` |
+| `agents`（`admitSession` 内） | ✅ 无需改：在**调用期**读取，晚到无妨 |
+| `llm` / `sessionProjections` / `agentDefaultModel` / `agent` | ✅ 无需改：都在调用期读取 |
+
+**为什么原来的测试发现不了**：`test/helpers/fake-ctx.mjs` **同步**提供了 `connection`，而且**没有**
+实现 `inject`——它在结构上就模拟不出"服务晚到"。因此我做了两件事：
+
+1. 给假 ctx 补上忠实的 `inject` 语义（已满足→立即同步回调；未满足→等 `provide()`/`set()` 再回调）；
+2. 新增两条回归测试：**服务晚到时必须补注册**、**服务本来就绪时也必须注册**。
+
+并且**验证了回归测试真的能抓到它**：把实现临时退回旧写法 → `not ok 16 - connection 服务晚于本插件就绪时，RPC 通道仍会被注册`；恢复修复 → 17/17 全绿。**回归测试若不能证明它会红，就等于没有。**
+
+**客户端诊断改进**：`HTTP 405/404` 现在被单独折成 `code: 'rpc/channel-missing'`，映射到文案键
+`status.rpcChannelMissing`，界面显示可照做的中文/英文提示（"宿主半的 RPC 通道未注册……需要重启一次
+DSH"），而不是把裸状态码丢给用户。普通网络故障仍是 `rpc/transport`，不会被误导（有对照测试）。
+
+> **这条修复要生效必须重启 DSH**：宿主半的代码是 Node 进程里的模块代，改盘上的文件不会热加载。
+> 这也是本条提示语里直接写出「请重启」的原因。
+
+
 ## 3. 工具契约（模型视角）
 
 | # | 检查 | 做法 | 期望 | 实测 | 结论 |

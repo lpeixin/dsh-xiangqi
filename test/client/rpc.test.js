@@ -10,6 +10,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { RPC_CHANNEL, RPC_ENDPOINTS, createGameRpc } from '../../lib/ui/rpc.js';
+import { errorKeyOf } from '../../lib/ui/model.js';
 
 const board = new Array(90).fill('');
 board[85] = 'K';
@@ -180,4 +181,29 @@ test('自定义通道名也接受（便于复用与测试）', async () => {
   const rpc = createGameRpc({ call, sessionId: 's', channel: '/other-channel' });
   await rpc.state();
   assert.equal(calls[0].channel, '/other-channel');
+});
+
+test('HTTP 405/404 被单独标成 rpc/channel-missing，并映射到「请重启 DSH」的可照做提示', async () => {
+  // 真机上踩到过：宿主半用 `ctx.get('connection')` 在 apply 时取一次服务，
+  // `connection` 晚于本插件就绪就永久漏掉 RPC 注册 —— 工具照常可用，只有面板连不上，
+  // 界面原先只显示裸的 `HTTP 405`，看不出该做什么。
+  const rpc = createGameRpc({
+    sessionId: 's',
+    call: async () => {
+      throw new Error('transport failure for /xiangqi-mate/state: HTTP 405');
+    },
+  });
+  const result = await rpc.state();
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, 'rpc/channel-missing', '405 必须被认成「通道未注册」而不是普通传输失败');
+  assert.equal(errorKeyOf(result.error.code), 'status.rpcChannelMissing', '必须映射到可照做的文案键');
+
+  // 对照：普通网络故障不能被误判成通道缺失，否则提示会误导。
+  const offline = createGameRpc({
+    sessionId: 's',
+    call: async () => {
+      throw new Error('fetch failed: ECONNREFUSED');
+    },
+  });
+  assert.equal((await offline.state()).error.code, 'rpc/transport');
 });

@@ -4,7 +4,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -339,3 +339,56 @@ async function listOwnSources() {
   }
   return out;
 }
+
+test('connection 服务晚于本插件就绪时，RPC 通道仍会被注册（回归：面板 HTTP 405）', async () => {
+  // 真实的 Cordis 组合里，`connection` 由别的插件行提供，可能在本插件激活**之后**才就绪。
+  // 早先的实现是在 apply 时 `ctx.get('connection')` 取一次：那一刻拿到 undefined，于是
+  // RPC 通道被**永久静默跳过**——工具照常注册（"插件看起来是好的"），但浏览器半连不上，
+  // 面板显示 `与宿主通信失败：transport failure for /xiangqi-mate/state: HTTP 405`。
+  // 这个用例盯着两个方向：服务晚到要补注册，服务本来就在也要注册。
+  const cwd = await tempCwd();
+  const ctx = createFakeCtx({ connection: false }); // ← apply 时刻意没有 connection
+  const dispose = apply(ctx, testConfig({ saveDir: path.join(cwd, '.xiangqi-test') }));
+
+  assert.equal(
+    ctx.registrations.rpc.has('/xiangqi-mate'),
+    false,
+    'apply 时服务尚未就绪，此刻不应有通道（有的话说明是别的路径注册的）',
+  );
+
+  // 服务随后上线：Cordis 会触发等待中的 inject 回调。
+  ctx.provide('connection', {
+    rpc: {
+      handle(channel, handler) {
+        ctx.registrations.rpc.set(channel, handler);
+        return async () => {
+          ctx.registrations.rpc.delete(channel);
+        };
+      },
+    },
+  });
+
+  assert.equal(
+    ctx.registrations.rpc.has('/xiangqi-mate'),
+    true,
+    'connection 就绪后必须补上 RPC 注册，否则面板永远 405',
+  );
+
+  // 通道确实可用：随便打一个端点，应当得到结构化的（而非抛出的）应答。
+  const handler = ctx.registrations.rpc.get('/xiangqi-mate');
+  const reply = await handler('state', { sessionId: 'session-late' });
+  assert.equal(typeof reply, 'object');
+  assert.equal(reply.ok, true, `通道应可用，实际：${JSON.stringify(reply).slice(0, 120)}`);
+
+  await dispose();
+  await rm(cwd, { recursive: true, force: true });
+});
+
+test('服务本来就绪时也必须注册（inject 的即时回调路径）', async () => {
+  const app = await bootstrap();
+  try {
+    assert.equal(app.ctx.registrations.rpc.has('/xiangqi-mate'), true, 'connection 同步可用时应当立即注册');
+  } finally {
+    await app.cleanup();
+  }
+});

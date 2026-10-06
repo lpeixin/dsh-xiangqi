@@ -70,16 +70,53 @@ export function createFakeCtx(options = {}) {
     };
   }
 
+  /** 等待依赖就绪的 `inject` 回调（见下面 `inject` 的注释）。 */
+  const waiters = [];
+
+  /** 让一个服务「上线」，并触发依赖已满足的等待者（模拟 Cordis 的服务 provide）。 */
+  const provide = (key, value) => {
+    services[key] = value;
+    for (const entry of [...waiters]) {
+      if (entry.list.every((name) => services[name] !== undefined)) {
+        waiters.splice(waiters.indexOf(entry), 1);
+        entry.callback(ctx);
+      }
+    }
+  };
+
   const ctx = {
     services,
     registrations,
     logs,
     disposalOrder,
+    provide,
     get(key) {
       return services[key];
     },
     set(key, value) {
-      services[key] = value;
+      provide(key, value);
+    },
+    /**
+     * 忠实模拟 Cordis 的 `ctx.inject(keys, callback)`：
+     *  - 依赖**已满足** → 立即同步回调；
+     *  - 未满足 → 记下来，等 `set()` / `provide()` 让服务就绪时再回调。
+     *
+     * 这条语义必须模拟对，否则测试**结构上**发现不了一类真实故障：在 `apply()` 时用
+     * `ctx.get()` 取一次服务，服务晚到就永久漏掉注册——真机表现为浏览器半连不上
+     * （`transport failure … HTTP 405`），而所有假 ctx 测试仍然全绿。
+     */
+    inject(keys, callback) {
+      const list = Array.isArray(keys) ? keys : [keys];
+      const entry = { list, callback };
+      waiters.push(entry);
+      if (list.every((name) => services[name] !== undefined)) {
+        waiters.splice(waiters.indexOf(entry), 1);
+        callback(ctx);
+      }
+      return () => {
+        const index = waiters.indexOf(entry);
+        if (index >= 0) waiters.splice(index, 1);
+      };
     },
     on() {
       return () => {};
