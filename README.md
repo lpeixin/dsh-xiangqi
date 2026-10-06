@@ -1,1 +1,1 @@
-# dsh-xiangqi
+# dsh-xiangqi-mate
