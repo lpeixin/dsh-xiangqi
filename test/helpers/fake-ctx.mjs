@@ -72,6 +72,8 @@ export function createFakeCtx(options = {}) {
 
   /** 等待依赖就绪的 `inject` 回调（见下面 `inject` 的注释）。 */
   const waiters = [];
+  /** 事件监听表（`on` / `emit`）。 */
+  const listeners = new Map();
 
   /** 让一个服务「上线」，并触发依赖已满足的等待者（模拟 Cordis 的服务 provide）。 */
   const provide = (key, value) => {
@@ -118,8 +120,21 @@ export function createFakeCtx(options = {}) {
         if (index >= 0) waiters.splice(index, 1);
       };
     },
-    on() {
-      return () => {};
+    /**
+     * 记录事件监听并返回退订函数；`emit()` 用来在测试里模拟 Cordis 广播
+     * （例如服务 provide 时的 `internal/service`）。
+     */
+    on(name, listener) {
+      const list = listeners.get(name) ?? [];
+      list.push(listener);
+      listeners.set(name, list);
+      return () => {
+        const index = list.indexOf(listener);
+        if (index >= 0) list.splice(index, 1);
+      };
+    },
+    emit(name, ...args) {
+      for (const listener of [...(listeners.get(name) ?? [])]) listener(...args);
     },
     effect(callback, label) {
       const returned = callback();

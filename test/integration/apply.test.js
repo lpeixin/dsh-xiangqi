@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { Config, apply, inject, name, TOOL_NAMES } from '../../lib/index.js';
 import { stripComments } from '../helpers/source.mjs';
 import { bootstrap, tempCwd, testConfig } from '../helpers/bootstrap.mjs';
-import { createFakeCtx } from '../helpers/fake-ctx.mjs';
+import { createFakeCtx, makeAgent } from '../helpers/fake-ctx.mjs';
 import { testEngine } from '../helpers/engine.mjs';
 
 const LIB_DIR = fileURLToPath(new URL('../../lib/', import.meta.url));
@@ -390,5 +390,72 @@ test('服务本来就绪时也必须注册（inject 的即时回调路径）', a
     assert.equal(app.ctx.registrations.rpc.has('/xiangqi-mate'), true, 'connection 同步可用时应当立即注册');
   } finally {
     await app.cleanup();
+  }
+});
+
+test('RPC 通道有三条独立注册路径，任一可用即可（回归：面板 HTTP 405 长期不可恢复）', async () => {
+  // 真机上出现过：`ctx.inject(['connection'], cb)` 的回调**始终不触发**，于是面板永久 405。
+  // 只依赖单一机制是不可接受的，因此现在有三条路径：
+  //   1) whenService → ctx.inject 等依赖就绪
+  //   2) internal/service 服务就绪事件
+  //   3) 首次调用工具时惰性补偿（工具调用一定能到达宿主）
+  // 本用例用「inject 永不回调」的假 ctx 覆盖 2 与 3。
+
+  // ── 路径 2：服务就绪事件 ──────────────────────────────────────────────
+  {
+    const cwd = await tempCwd();
+    const ctx = createFakeCtx({ connection: false });
+    let injected = 0;
+    // 保留真实的 inject 语义记录，但**故意让它永不回调**（模拟真机表现）
+    ctx.inject = (keys, callback) => { injected += 1; return () => {}; };
+    const dispose = apply(ctx, testConfig({ saveDir: path.join(cwd, '.xiangqi-test') }));
+    assert.equal(injected > 0, true, 'apply 应当尝试过 ctx.inject');
+    assert.equal(ctx.registrations.rpc.has('/xiangqi-mate'), false, 'inject 未回调时此刻不应有通道');
+
+    // 宿主把服务提供出来 → Cordis 广播 internal/service
+    ctx.provide('connection', {
+      rpc: {
+        handle(channel, handler) {
+          ctx.registrations.rpc.set(channel, handler);
+          return async () => {};
+        },
+      },
+    });
+    ctx.emit('internal/service', 'connection', ctx.get('connection'));
+    assert.equal(ctx.registrations.rpc.has('/xiangqi-mate'), true, '服务就绪事件必须把通道挂上（不依赖工具调用）');
+
+    await dispose();
+    await rm(cwd, { recursive: true, force: true });
+  }
+
+  // ── 路径 3：首次调用工具时惰性补偿 ────────────────────────────────────
+  {
+    const cwd = await tempCwd();
+    const ctx = createFakeCtx({ connection: false });
+    ctx.inject = () => () => {}; // 同样永不回调
+    const dispose = apply(ctx, testConfig({ saveDir: path.join(cwd, '.xiangqi-test') }));
+    assert.equal(ctx.registrations.rpc.has('/xiangqi-mate'), false);
+
+    // 宿主起来了（工具一定到达宿主，那时 connection 必然在位）
+    ctx.provide('connection', {
+      rpc: {
+        handle(channel, handler) {
+          ctx.registrations.rpc.set(channel, handler);
+          return async () => {};
+        },
+      },
+    });
+
+    const board = ctx.registrations.tools.get('xiangqi_board');
+    assert.equal(typeof board?.execute, 'function');
+    await board.execute({}, { agent: makeAgent({ id: 'session-self-heal', cwd }), signal: new AbortController().signal });
+    assert.equal(
+      ctx.registrations.rpc.has('/xiangqi-mate'),
+      true,
+      '第一次调用工具后必须自愈——把"永久 405"降级成"调用一次即恢复"',
+    );
+
+    await dispose();
+    await rm(cwd, { recursive: true, force: true });
   }
 });
