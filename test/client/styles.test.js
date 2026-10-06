@@ -149,18 +149,44 @@ test('状态条、着法列表与焦点环都有显式样式（§7.4/§7.7）', 
   }
 });
 
-test('布局不变量：着法变多时缩小的必须是着法块，不能是棋盘', () => {
-  // 棋盘按 .xq-boardArea 的实测高度缩放，所以任何会随内容长高的兄弟节点都会把棋盘挤小。
-  // 曾经的写法给 .xq-movesList 写死 max-height:168px —— 棋谱一长，长高的是着法块，缩小的却是棋盘。
-  const area = /\.xq-boardArea\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
-  assert.match(area, /min-height:\s*\d+px/, '棋盘区必须有高度下限，否则会被着法块挤到很小');
-
+test('布局不变量：着法块的尺寸必须**与内容无关**，棋盘才不会随棋谱变长而缩小', () => {
+  // 棋盘按 .xq-boardArea 的实测高度缩放，所以着法块一旦随内容长高，棋盘就会被挤小。
+  // 踩过两次：① 列表写死 max-height:168px；② 着法块只设 42% 上限——
+  // 后者只限制了最大占比，棋谱从 1 手长到 42% 的过程中棋盘仍在缩小。
+  // 正确形态是**固定高度 + 内部滚动**，所以这里断言"高度是常量"，而不是"有上限"。
   const moves = /\.xq-moves\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
-  assert.match(moves, /flex:\s*0\s+1\s+auto/, '着法块必须可收缩（flex-shrink），否则抢走棋盘的空间');
-  assert.match(moves, /max-height:\s*\d+%/, '着法块必须有高度上限，不能无限长高');
+  assert.match(moves, /height:\s*var\(--xq-moves-h\)/, '着法块高度必须是常量变量，不能随内容变化');
+  assert.match(moves, /flex:\s*0\s+1\s+auto/, '窄屏时允许收缩以免溢出，但基大小是常量');
+  assert.doesNotMatch(moves, /max-height:\s*\d+%/, '不要用百分比上限——过程中仍会挤压棋盘');
+
+  const root = /\.xq-root\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
+  assert.match(root, /--xq-moves-h:\s*\d+px/, '变量要有具体值');
+
+  const area = /\.xq-boardArea\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
+  assert.match(area, /min-height:\s*\d+px/, '棋盘区还要有高度下限，防止极窄面板下被压没');
 
   const list = /\.xq-movesList\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
-  assert.match(list, /overflow-y:\s*auto/, '着法列表要在自己的区域内滚动');
-  assert.match(list, /flex:\s*1\s+1\s+auto/, '着法列表的高度应由父容器决定');
-  assert.doesNotMatch(list, /max-height:\s*\d+px/, '不要再写死列表高度——那正是棋盘被挤小的原因');
+  assert.match(list, /overflow-y:\s*auto/, '棋谱要能在自己的区域内滚动查看');
+  assert.match(list, /flex:\s*1\s+1\s+auto/, '列表高度由父容器（常量）决定');
+  assert.doesNotMatch(list, /max-height:\s*\d+px/, '不要再写死列表高度');
+});
+
+test('CSS 结构自检：括号平衡，且面板根节点保留完整的 flex 纵向布局', () => {
+  // 为什么需要这条：曾经在一次"插入自定义属性"的改动里手滑多写了一个 `}`，
+  // 把 .xq-root 的**整段声明**变成了无效声明——`display:flex` 静默失效，
+  // 于是棋盘不再按 flex 分配空间、而是被内容牵着走（用户看到"棋盘还是一直缩小"）。
+  // 子串匹配式的样式测试完全拦不住这种语法级破坏，所以这里做结构检查。
+  const open = (CSS.match(/\{/g) ?? []).length;
+  const close = (CSS.match(/\}/g) ?? []).length;
+  assert.equal(open, close, `CSS 花括号不平衡：{ ${open} 个，} ${close} 个`);
+
+  const root = /\.xq-root\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
+  assert.match(root, /display:\s*flex/, '.xq-root 必须仍然是 flex 容器（否则纵向分配全部失效）');
+  assert.match(root, /flex-direction:\s*column/, '.xq-root 必须是纵向 flex');
+  assert.match(root, /height:\s*100%/, '.xq-root 必须撑满面板高度');
+  assert.match(root, /--xq-moves-h:\s*\d+px/, '棋谱区高度变量必须声明在 .xq-root 规则内');
+
+  // 变量只能在根节点声明一次，避免出现"变量自成一个空规则"的写法。
+  const declarations = CSS.match(/--xq-moves-h:\s*\d+px/g) ?? [];
+  assert.equal(declarations.length, 1, `--xq-moves-h 只应声明一次，实际 ${declarations.length} 次`);
 });
