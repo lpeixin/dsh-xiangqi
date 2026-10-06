@@ -289,7 +289,7 @@ if (connection !== undefined && ...) { push('rpc', connection.rpc.handle(...)) }
 `connection` 由**别的插件行**提供，可能在本插件激活**之后**才就绪。那一刻 `ctx.get()` 返回
 `undefined`，于是 RPC 注册被**永久静默跳过**——没有任何报错，工具照常注册，插件"看起来是好的"。
 
-**离线复现**（`/tmp/repro-rpc-late.mjs`，模拟服务晚到）：修复前 `注册数 = 0`，且代码根本没调用过
+**离线复现**（用一个临时脚本模拟"服务晚到"）：修复前 `注册数 = 0`，且代码根本没调用过
 `ctx.inject`（等待中的 inject = 0）；修复后两条路径（即时可用 / 晚到）都注册成功，3/3。
 
 **修复**：新增 `whenService(ctx, name, attach)`，用 Cordis 的 `ctx.inject([name], cb)` **等**服务就绪
@@ -487,6 +487,18 @@ ctx.inject(["webServer"], (webCtx) => { webCtx.effect(() => webCtx.webServer.reg
 | **`lib/ui/panel.js` 964 行** | 超出 §11-R8 的 400 行/文件；浏览器半源码有意放宽 | 已写进 DESIGN.md §11-R8 的偏离说明与理由 |
 | **红方字色偏离 §7.3 的逐字映射** | 用了 `color-mix(92% state-error-primary, 8% label-primary)`：亮色下 red-600 在白底盘只有 4.4976:1，卡在 WCAG AA 的 4.5 下沿 | **保留**（可访问性优先）；两个输入仍是主题令牌，WCAG 测试从 CSS 声明反解后逐条钉住 |
 | **`node --test <目录>` 不可用** | Node ≥21 的位置参数是 glob 而非目录，目录会被当模块 require | 已把全部文档里的命令改成 glob 形式或裸 `node --test` |
+
+### 8.2 本轮（发布打磨）改动与实测
+
+| 项 | 内容 | 实测 |
+| --- | --- | --- |
+| **仓库隐私审计** | 逐个跟踪文件扫描个人路径、用户名、会话 id、邮箱、IP、密钥模式 | 命中 **1 处**：`docs/DESIGN.md` 的安装示例里写了本机绝对路径 → 已改为占位符；`docs/research/ai-move-paths.md` 里 12 处本机解包路径 → 已改为包内相对路径并在文首说明引用约定。**提交历史同样干净**（`git log` 里没有本机绝对路径、没有用户名、没有临时目录）。剩余 `/tmp/` 命中均为测试夹具（`/tmp/ws`、`session-1`） |
+| **`.gitignore`** | 补齐运行期存档（`.xiangqi-mate/`、历史名 `.dsh-xiangqi/`、测试名 `.xiangqi-test/`、`.xq-*`）、打包产物 `*.tgz`、审计产物、编辑器、以及 `.env` / `*.pem` / `*.key` 等密钥模式 | 逐条验证生效；**同时确认 `lib/client.js` 没有被误忽略**（它是构建产物但必须提交，粗粒度的"产物一律忽略"会把它带走） |
+| **UI i18n 完整性** | 新增两条守卫：① 组件里不得**硬编码中文**（棋盘固有的「楚河/汉界」列入允许清单）；② 代码里用到的每个文案键必须在 zh 与 en 中同时存在 | ② 立刻抓到一处真缺口：`moves.turning` 被使用但**两份字典都没有**——中文界面下会**原样显示键名**。已补齐（zh/en 各 129 键）。① 扫出 2 处命中，其中「楚河/汉界」为棋具固有字样（保留），另一处 `recordText` 的非界面文本已改为语言中立 |
+| **导出棋谱的 i18n** | `recordText`（「复制棋谱」）的注释标签改为语言中立（`# initial FEN` / `# current FEN`），每手同时给出中文记谱与 ICCS | 这是**数据格式**而非界面文案：同一份棋谱不该因界面语言而变样；附 ICCS 后非中文读者与引擎也能用 |
+| **图片** | 新增 `docs/images/banner.png`（科技感 banner）、`panel-game.jpg`、`panel-header.jpg`（真实会话截图） | 截图取自**功能正常**的画面；含报错横幅的几张一律不用。体积优化：banner 改调色板 PNG（185 → 71 KB）、截图缩到 1000 px（74 → 50 KB），图片合计 **271 → 132 KB** |
+| **README 双语** | 顶部语言切换（**默认英语** → 点击切中文）、banner 与截图区、英文补目录、两份章节顺序**逐节对齐**、文档表补上 ENGINE/TOOLS/ARCHITECTURE/VERIFICATION | 两份 README 的 `##` 章节顺序逐条一致；修正了英文版里"正文说 60 秒、配置示例还写 20000"的自相矛盾 |
+
 
 ### 8.1 本轮（收尾轮）修掉的三个问题
 

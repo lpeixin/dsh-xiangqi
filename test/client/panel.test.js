@@ -979,7 +979,10 @@ test('复制棋谱：可用时写剪贴板并提示成功，不可用时提示�
     const after = await app.drive();
     assert.equal(written.length, 1);
     assert.match(written[0], /炮二平五/);
-    assert.match(written[0], /当前局面/);
+    // 导出的棋谱刻意**语言中立**：标签用 ASCII，每手同时给中文记谱与 ICCS，
+    // 这样贴给非中文读者或引擎也能用，且不随界面语言变样。
+    assert.match(written[0], /# current FEN /);
+    assert.match(written[0], /炮二平五 \(h2e2\)/);
     assert.equal(statusText(after.nodes), zh['status.copied']);
   } finally {
     if (descriptor === undefined) delete globalThis.navigator;

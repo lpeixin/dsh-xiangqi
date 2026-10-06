@@ -100,3 +100,44 @@ test('英文侧不携带中文标点或汉字（棋子汉字除外）', () => {
   }
   assert.deepEqual(offenders, []);
 });
+
+test('i18n 完整性：UI 组件里不得硬编码中文（棋盘固有字样除外）', async () => {
+  // 界面文案一律走 `props.t(...)` / 字典。组件里一旦硬编码中文，切到英文就不会被翻译，
+  // 而这种缺口在中文环境下**永远看不出来**——所以用静态检查守住。
+  const { readFile, readdir } = await import('node:fs/promises');
+  const strip = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"\\])\/\/[^\n]*/g, '$1');
+  const CJK = /[\u4e00-\u9fff]/;
+  // 允许清单：棋盘上印的「楚河 / 汉界」是棋具固有字样，英文棋具同样印中文，不该翻译。
+  const ALLOWED = new Set(['楚河', '汉界']);
+
+  const dir = new URL('../../lib/ui/', import.meta.url);
+  const files = (await readdir(dir)).filter((name) => name.endsWith('.js') && name !== 'i18n.js');
+  const offenders = [];
+  for (const name of files) {
+    const source = strip(await readFile(new URL(name, dir), 'utf8'));
+    const literals = [...source.matchAll(/'([^'\\\n]*)'|"([^"\\\n]*)"|`([^`\\]*)`/g)].map(
+      (match) => match[1] ?? match[2] ?? match[3] ?? '',
+    );
+    for (const literal of literals) {
+      if (!CJK.test(literal)) continue;
+      if (ALLOWED.has(literal)) continue;
+      offenders.push(`${name}: ${JSON.stringify(literal.slice(0, 60))}`);
+    }
+  }
+  assert.deepEqual(offenders, [], `组件里出现了硬编码中文，切语言时不会被翻译：\n${offenders.join('\n')}`);
+});
+
+test('i18n 完整性：代码里用到的每个文案键都必须在 zh 与 en 里都存在', async () => {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const dir = new URL('../../lib/ui/', import.meta.url);
+  const files = (await readdir(dir)).filter((name) => name.endsWith('.js') && name !== 'i18n.js');
+  const keys = new Set();
+  for (const name of files) {
+    const source = await readFile(new URL(name, dir), 'utf8');
+    // 匹配 t('key') / props.t('key')；带插值的键名（如 `status.check.${side}`）由测试另行覆盖。
+    for (const match of source.matchAll(/\bt\(\s*'([a-zA-Z][\w.]*)'/g)) keys.add(match[1]);
+  }
+  assert.ok(keys.size > 20, `应当扫到足量文案键，实际 ${keys.size}`);
+  const missing = [...keys].filter((key) => !(key in zh) || !(key in en)).sort();
+  assert.deepEqual(missing, [], `这些键在字典里缺失（或只翻译了一种语言）：\n${missing.join('\n')}`);
+});

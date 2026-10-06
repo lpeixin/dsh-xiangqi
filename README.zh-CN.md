@@ -1,20 +1,24 @@
+![dsh-xiangqi-mate](docs/images/banner.png)
+
 # dsh-xiangqi-mate · 象棋对弈助手
 
 > 一款运行在 [DeepSeek Harness](https://harness.deepseek.com) 中的中国象棋人机对弈插件。
 > 打开面板即现棋盘：**你执红先行，当前会话所配置的 AI 模型执黑应招**，画面精美简约，落子之间见智慧。
 
-[English](README.md) | 中文
+[English](README.md) · **中文**
 
 ---
 
 ## 目录
 
 - [它是什么](#它是什么)
+- [界面截图](#界面截图)
 - [安装](#安装)
 - [怎么用](#怎么用)
 - [工具与命令](#工具与命令)
 - [配置](#配置)
 - [棋规引擎（可独立复用）](#棋规引擎可独立复用)
+- [让模型对手回得更快](#让模型对手回得更快)
 - [开发与测试](#开发与测试)
 - [设计文档](#设计文档)
 - [隐私与安全](#隐私与安全)
@@ -34,6 +38,7 @@
 | **中文记谱是双向的** | 棋盘显示「炮二平五」，你也可以直接对它说「炮二平五」——不必记坐标 |
 | **零依赖、免构建** | 宿主半只用 Node 内置模块；浏览器半是手写的单文件 bundle。安装不执行任何脚本 |
 | **引擎可单独拿走** | `lib/engine/**` 是纯函数模块，不认识 DSH，可以直接用在别的项目里 |
+| **跟随你的语言** | 界面文案全部走字典，跟随 DSH 的语言设置（中文 / English）——切换应用语言，面板随之切换，无需重启 |
 
 ### 与社区同类的区别
 
@@ -46,6 +51,20 @@
 | `ovdoesw/dsh-xiangqi` | 纯本地引擎，模型只做点评（不用会话模型） |
 
 本插件取**直连模型 + 本地引擎兜底**：比第一种省上下文（一步棋不会在对话里留下一整轮记录），比第三种有真对手，比第二种不会因为一次超时就把棋局卡住。
+
+---
+
+## 界面截图
+
+![对局中的面板](docs/images/panel-game.jpg)
+
+*棋盘就在右栏、与对话并排。下方依次是状态条、工具条（新对局 · 悔棋 · 提示 · 复盘 · 复制棋谱 ·
+认输 · 在右栏打开）以及中文记谱的着法列表。*
+
+![面板顶栏：对手模型与用量](docs/images/panel-header.jpg)
+
+*顶栏写清对手是谁、轮到哪一方、本局累计 token 用量、双方用时与手数——花费与进度都不必靠猜
+（FR23/FR24）。*
 
 ---
 
@@ -106,7 +125,7 @@ plugin_manager { action: "install_bundle", target: "/path/to/dsh-xiangqi-mate" }
 状态条会明确告诉你发生了什么，例如：
 
 - `AI 思考中…` —— 已发出请求，正在等模型；
-- `模型超时，已由本地引擎代走` —— 20 秒没等到，棋局继续，不卡住；
+- `模型超时，已由本地引擎代走` —— 等满 `opponent.timeoutMs`（默认 60 秒）仍未返回，棋局继续，不卡住；
 - `模型返回的着法不合法，已重试 2 次后由本地引擎代走`；
 - `本局模型额度已用完，后续由本地引擎应招`。
 
@@ -137,27 +156,6 @@ plugin_manager { action: "install_bundle", target: "/path/to/dsh-xiangqi-mate" }
 
 ---
 
-### 让模型对手回得更快
-
-插件是让**你当前会话正在用的模型**来走子的，并且沿用该会话的推理档位。如果模型是高推理档，
-一步棋可能超过默认预算：此时插件会等满 `opponent.timeoutMs`（默认 **60 秒**），然后改由
-**本地引擎**代走——面板会明确写出来（*「模型超时，已由本地引擎代走」*）。这条降级路径有测试
-覆盖，不是故障；但如果你确实想让模型来下，有两个旋钮：
-
-```yaml
-# 写进 profile 的 cordis.patch.yml
-- id: xiangqi
-  config:
-    opponent:
-      reasoningEffort: low     # 选一步棋不需要高推理档；提速与省额度都很明显
-      timeoutMs: 120000        # 给慢模型更多时间（客户端默认最多轮询 75 秒）
-```
-
-- `reasoningEffort` 可不填，表示跟随会话当前档位。若模型不接受该档位，插件会**不带档位**重试一次，所以填它是安全的。
-- `timeoutMs` 是**宿主侧**的预算；浏览器半只在宿主报告 `ai-thinking` 时继续轮询，到自己的上限（75 秒）才停。
-  上限刻意设得**更大**——"该等多久"的真相来源只有一个，就是宿主。
-- profile 若开了 `patchReload: live`，改配置**无需重启** DSH 即可生效。
-
 ## 配置
 
 改 profile 的 `cordis.patch.yml`（**注意：patch 覆盖 `config` 是整体替换，不是深合并——要保留的键必须重述**）：
@@ -167,7 +165,7 @@ plugin_manager { action: "install_bundle", target: "/path/to/dsh-xiangqi-mate" }
   config:
     opponent:
       mode: model          # model | local
-      timeoutMs: 20000
+      timeoutMs: 60000
       maxRetries: 2
       maxTokensPerMove: 256
       maxTokensPerGame: 20000
@@ -188,7 +186,7 @@ plugin_manager { action: "install_bundle", target: "/path/to/dsh-xiangqi-mate" }
 | --- | --- | --- |
 | `opponent.mode` | `model` | `local` 则完全用本地引擎，不产生任何模型请求 |
 | `opponent.provider` / `model` | 跟随会话 | 显式指定对手模型；不填则读当前会话所用的模型 |
-| `opponent.timeoutMs` | `20000` | 超时即由本地引擎代走 |
+| `opponent.timeoutMs` | `60000` | 超时即由本地引擎代走 |
 | `opponent.maxTokensPerMove` / `PerGame` | `256` / `20000` | 双限；超限自动停用模型 |
 | `local.depth` / `timeMs` | `4` / `300` | 本地引擎的搜索深度与时间双限 |
 | `rules.fiftyMovePlies` | `120` | 自然限着（半回合数）无吃子判和 |
@@ -220,6 +218,27 @@ node scripts/perft.mjs --depth 4
 
 ---
 
+## 让模型对手回得更快
+
+插件是让**你当前会话正在用的模型**来走子的，并且沿用该会话的推理档位。如果模型是高推理档，
+一步棋可能超过默认预算：此时插件会等满 `opponent.timeoutMs`（默认 **60 秒**），然后改由
+**本地引擎**代走——面板会明确写出来（*「模型超时，已由本地引擎代走」*）。这条降级路径有测试
+覆盖，不是故障；但如果你确实想让模型来下，有两个旋钮：
+
+```yaml
+# 写进 profile 的 cordis.patch.yml
+- id: xiangqi
+  config:
+    opponent:
+      reasoningEffort: low     # 选一步棋不需要高推理档；提速与省额度都很明显
+      timeoutMs: 120000        # 给慢模型更多时间（客户端默认最多轮询 75 秒）
+```
+
+- `reasoningEffort` 可不填，表示跟随会话当前档位。若模型不接受该档位，插件会**不带档位**重试一次，所以填它是安全的。
+- `timeoutMs` 是**宿主侧**的预算；浏览器半只在宿主报告 `ai-thinking` 时继续轮询，到自己的上限（75 秒）才停。
+  上限刻意设得**更大**——"该等多久"的真相来源只有一个，就是宿主。
+- profile 若开了 `patchReload: live`，改配置**无需重启** DSH 即可生效。
+
 ## 开发与测试
 
 ```bash
@@ -246,6 +265,10 @@ node scripts/xiangqi-cli.mjs play --moves 60  # 引擎自战冒烟，打印中�
 | 文档 | 内容 |
 | --- | --- |
 | [docs/DESIGN.md](docs/DESIGN.md) | 完整设计文档：需求规格、技术选型、引擎规格、宿主半与浏览器半设计、目录结构、测试与验收、里程碑、风险，以及 **21 条 DSH API 证据索引** |
+| [docs/ENGINE.md](docs/ENGINE.md) | 把棋规引擎当独立库用：坐标与两种记谱方言、完整 API 面、复用方式 |
+| [docs/TOOLS.md](docs/TOOLS.md) | 对外契约：工具、会话命令、RPC 端点、跨半通道、配置与技能 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 代码在哪、为什么这样分：宿主半、浏览器半、免构建打包流程与扩展点 |
+| [docs/VERIFICATION.md](docs/VERIFICATION.md) | 验证记录：实测了什么、怎么测的、抓到了哪些缺陷（含两个上游/平台缺陷） |
 | [docs/research/ai-move-paths.md](docs/research/ai-move-paths.md) | 「AI 怎么走棋」的调研报告（含社区三个同类插件的架构对比） |
 | [CHANGELOG.md](CHANGELOG.md) | 变更历史 |
 

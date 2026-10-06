@@ -494,11 +494,13 @@ test('formatScore：厘兵 → 带符号的兵值', () => {
   assert.equal(formatScore(undefined), '');
 });
 
-test('recordText 给出「中文记谱逐行 + FEN」，可粘贴进任何象棋软件', () => {
+test('recordText 给出「逐行棋谱 + FEN」，且**语言中立**、带 ICCS，可粘贴进任何象棋软件', () => {
   const projection = fixture({ initialFen: 'START-FEN' });
   const text = recordText(projection);
-  assert.match(text, /# 初始局面 START-FEN/);
-  assert.match(text, /1\. 炮二平五/);
-  assert.match(text, /# 当前局面 /);
+  // 标签刻意不跟随界面语言：这是数据格式，同一个棋谱不该因界面语言而变样。
+  assert.match(text, /# initial FEN START-FEN/);
+  assert.match(text, /# current FEN /);
+  // 每一手同时给中文记谱与 ICCS，非中文读者/引擎也能用。
+  assert.match(text, /1\. 炮二平五 \([a-i][0-9][a-i][0-9]\)/);
   assert.equal(recordText(null), '');
 });

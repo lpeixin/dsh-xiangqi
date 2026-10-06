@@ -1,9 +1,28 @@
+![dsh-xiangqi-mate](docs/images/banner.png)
+
 # dsh-xiangqi-mate · Xiangqi Mate
 
 > A human-vs-AI Chinese Chess (Xiangqi) plugin for [DeepSeek Harness](https://harness.deepseek.com).
 > Open the panel and a beautifully minimal board appears — **you play Red, the AI model configured in your DSH session plays Black.**
 
-English | [中文](README.zh-CN.md)
+**English** · [中文](README.zh-CN.md)
+
+---
+
+## Contents
+
+- [What it is](#what-it-is)
+- [Screenshots](#screenshots)
+- [Install](#install)
+- [Using it](#using-it)
+- [Tools and commands](#tools-and-commands)
+- [Configuration](#configuration)
+- [Making the model opponent respond faster](#making-the-model-opponent-respond-faster)
+- [The engine, standalone](#the-engine-standalone)
+- [Development](#development)
+- [Documentation](#documentation)
+- [Privacy and security](#privacy-and-security)
+- [License](#license)
 
 ---
 
@@ -19,6 +38,7 @@ Not a collection of chess utilities — **a game you can actually finish**.
 | **Notation works both ways** | The board shows `炮二平五`; you can also just say "炮二平五" — no coordinates required |
 | **Zero dependencies, no build** | The host half uses only Node built-ins; the browser half is a hand-written single-file bundle. Installing runs no scripts |
 | **The engine stands alone** | `lib/engine/**` is pure functions that know nothing about DSH — reuse it in any project |
+| **Speaks your language** | The whole UI is dictionary-driven and follows DSH's language setting (中文 / English) — switch the app's language and the panel follows, no restart |
 
 ### How it differs from the community plugins
 
@@ -31,6 +51,21 @@ Three Xiangqi plugins for DSH already exist, covering three architectures:
 | `ovdoesw/dsh-xiangqi` | Local engine only; the model just comments (does not use the session model) |
 
 This plugin takes **direct model calls + local-engine fallback**: less context than the first (a move never leaves a whole turn in your conversation), a real opponent unlike the third, and a game that keeps going when the model times out, unlike the second.
+
+---
+
+## Screenshots
+
+![The panel during a game](docs/images/panel-game.jpg)
+
+*The board lives in the right panel, next to your conversation. Below it: the status strip, the
+toolbar (New game · Undo · Hint · Review · Copy record · Resign · Open in the right panel), and the
+move list in Chinese notation.*
+
+![Panel header showing the opponent model and usage](docs/images/panel-header.jpg)
+
+*The header names the opponent, the current side, the cumulative token usage for this game, both
+clocks, and the ply count — so cost and progress are never a guess (FR23/FR24).*
 
 ---
 
@@ -116,7 +151,7 @@ Edit your profile's `cordis.patch.yml`. **A patch replaces the whole `config`, i
   config:
     opponent:
       mode: model          # model | local
-      timeoutMs: 20000
+      timeoutMs: 60000
       maxRetries: 2
       maxTokensPerMove: 256
       maxTokensPerGame: 20000
@@ -161,7 +196,7 @@ node scripts/perft.mjs --depth 4
 
 ---
 
-### Making the model opponent respond faster
+## Making the model opponent respond faster
 
 The plugin asks **the model your session is currently using** to move, at the session's own
 reasoning effort. With a high-effort reasoning model a single move can take longer than the
@@ -213,6 +248,10 @@ Engineering constraints (read [docs/DESIGN.md](docs/DESIGN.md) §9.3 first):
 | Document | Contents |
 | --- | --- |
 | [docs/DESIGN.md](docs/DESIGN.md) | The full design: requirements, technical choices, engine spec, host/client design, layout, verification, milestones, risks, and **21 evidence entries for the DSH APIs used** |
+| [docs/ENGINE.md](docs/ENGINE.md) | The rules engine as a standalone library: coordinates, notation dialects, the full API surface, and how to reuse it |
+| [docs/TOOLS.md](docs/TOOLS.md) | The contract surface: tools, session commands, RPC endpoints, the client↔host channels, config, and the skill |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Where the code lives and why: host half, browser half, the build-free bundling pipeline, and the extension points |
+| [docs/VERIFICATION.md](docs/VERIFICATION.md) | The verification record: what was measured, how, and which defects it caught (including two upstream/platform ones) |
 | [docs/research/ai-move-paths.md](docs/research/ai-move-paths.md) | Research on how the AI should move (including the three community plugins) |
 | [CHANGELOG.md](CHANGELOG.md) | Change history |
 

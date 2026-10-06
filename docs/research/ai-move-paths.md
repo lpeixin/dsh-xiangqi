@@ -1,6 +1,9 @@
 # AI 走棋的技术路径调研（DSH 宿主 API + 社区先例）
 
-> 调研日期：2026-10（本机 DSH `0.2.0-rc.2`，`/tmp/dsh-asar/out/@deepseek-ai/` 解包源码）
+> **引用约定**：文中 `pkg/path/file.js:line` 形式的证据，均指 DSH 安装包内
+> `@deepseek-ai/` 下的对应文件（本机为解包目录）；只保留包内相对路径，不记录本机位置。
+>
+> 调研日期：2026-10（本机 DSH `0.2.0-rc.2`，`` 解包源码）
 > 读者：`dsh-xiangqi-mate` 实现方与设计评审
 > 本文是对 `docs/DESIGN.md` §4.4 的**证据复核**，其中两处结论需要修正（见 §1.4、§4.1）。
 
@@ -14,14 +17,14 @@
 
 | API | 签名 | 证据 |
 | --- | --- | --- |
-| `ctx.llm.stream` | `stream(options: GenerateOptions): AsyncIterable<StreamChunk>` | `/tmp/dsh-asar/out/@deepseek-ai/dsh-llm/lib/types/index.js:927` |
+| `ctx.llm.stream` | `stream(options: GenerateOptions): AsyncIterable<StreamChunk>` | `dsh-llm/lib/types/index.js:927` |
 | `ctx.llm.resolveCallConfig` | `async resolveCallConfig(config: LlmCallConfig, signal?: AbortSignal): Promise<LlmCallConfig>` | 同上 `:686` |
 | `ctx.llm.prepareCall` | `async prepareCall(config: LlmCallConfig, signal?: AbortSignal): Promise<PreparedLlmCall>` | 同上 `:730` |
 | `ctx.llm.resolveModelInfo` | `async resolveModelInfo(provider, model, signal?): Promise<LlmResolvedModelInfo>` | 同上 `:~660` |
 | `ctx.llm.listProviders` / `listModels` | `() => LlmProviderInfo[]` / `(provider) => Promise<LlmModelInfo[]>` | 同上 `:359` |
 | `llm/stream` 事件 | `'llm/stream'(this: LlmRuntime, options: GenerateOptions, next): AsyncIterable<StreamChunk>`（waterfall） | Cordis Inspect `host/Event.listEvents` |
 
-**请求类型**（逐字，来自生成清单 `/tmp/dsh-asar/out/@deepseek-ai/dsh-llm/lib/typert.host.js`）：
+**请求类型**（逐字，来自生成清单 `dsh-llm/lib/typert.host.js`）：
 
 ```ts
 export interface GenerateOptions {          // typert.host.js:313
@@ -67,9 +70,9 @@ export interface FinishReasonMap {          // typert.host.js
 
 **关键约束（源码级）**：
 
-1. **`stream()` 不会写会话历史。** README 的「Model-visible ⟺ logged」不变式约束的是 *loop-built* 请求；`dsh-llm` 的 README 明说「hand-built callers own input immutability」，且官方直接用 `ctx.llm.stream()` 的消费者（`dsh-session-title-llm`）要**自己追加一条 log-only 事件**（`session/title-llm-request`）来满足该契约 —— 见 `/tmp/dsh-asar/out/@deepseek-ai/dsh-session-title-llm/lib/index.js:196-226`。第三方插件**无法**新增 known 事件类型（见 §1.5），所以第三方直连调用必然是「未记录的」。
-2. **不是 agent-loop 请求。** `markAgentLoopRequest` / `isAgentLoopRequest` 用进程内 `WeakSet` 标记 loop 组装的请求（`/tmp/dsh-asar/out/@deepseek-ai/dsh-llm/lib/types/call-config.js:33,42`）。插件自建的 `GenerateOptions` 不会被标记。
-3. **因此没有自动重试。** `@deepseek-ai/dsh-llm-retry` 只挂钩 `agent/request-error`（`/tmp/dsh-asar/out/@deepseek-ai/dsh-llm-retry/lib/index.js:175`），其 README 逐字写着：「**direct `ctx.llm.stream()` calls remain single-attempt**」。重试、超时、协议校验全归调用方。
+1. **`stream()` 不会写会话历史。** README 的「Model-visible ⟺ logged」不变式约束的是 *loop-built* 请求；`dsh-llm` 的 README 明说「hand-built callers own input immutability」，且官方直接用 `ctx.llm.stream()` 的消费者（`dsh-session-title-llm`）要**自己追加一条 log-only 事件**（`session/title-llm-request`）来满足该契约 —— 见 `dsh-session-title-llm/lib/index.js:196-226`。第三方插件**无法**新增 known 事件类型（见 §1.5），所以第三方直连调用必然是「未记录的」。
+2. **不是 agent-loop 请求。** `markAgentLoopRequest` / `isAgentLoopRequest` 用进程内 `WeakSet` 标记 loop 组装的请求（`dsh-llm/lib/types/call-config.js:33,42`）。插件自建的 `GenerateOptions` 不会被标记。
+3. **因此没有自动重试。** `@deepseek-ai/dsh-llm-retry` 只挂钩 `agent/request-error`（`dsh-llm-retry/lib/index.js:175`），其 README 逐字写着：「**direct `ctx.llm.stream()` calls remain single-attempt**」。重试、超时、协议校验全归调用方。
 4. **`purpose` 是封闭联合**（`'compaction' | 'session-title'`），插件无法声明自己的 purpose，也就拿不到适配器对该 purpose 的特殊处理。
 5. **`prepareCall` + `stream` 组合有坑**（→ 修正 DESIGN.md §4.4.3）：
    - `prepareCall` 内部调 `resolveCallWithInfo`，会**把适配器默认值物化进 config**：`const defaulted = config.maxTokens === undefined && info.defaultMaxTokens !== undefined ? { ...config, maxTokens: info.defaultMaxTokens } : config`（`index.js:694-698`）；
@@ -113,7 +116,7 @@ export interface Agent {                        // dsh-agent-preset-registry/lib
 
 实现（**同步、无返回值、不抛**，只做 inbox splice）：
 
-- `/tmp/dsh-asar/out/@deepseek-ai/dsh-agent-loop/lib/index.js:806-814`
+- `dsh-agent-loop/lib/index.js:806-814`
   ```js
   followup(input) { this.send(input, 'next-turn', true) }   // 排队一个完整新回合并唤醒
   steer(input)    { this.send(input, 'next-step', true) }   // 下一个 step 边界消费；idle 则起一回合
@@ -158,7 +161,7 @@ export interface SubagentResult { readonly output: readonly ContentBlock[]; read
 // SubagentStopReasonMap = { completed, aborted, error, 'max-tokens', refusal }  （typert.host.js）
 ```
 
-- `ctx.subagents.start(name, request): Promise<SubagentRun>` —— `/tmp/dsh-asar/out/@deepseek-ai/dsh-subagent/lib/index.js:3115`
+- `ctx.subagents.start(name, request): Promise<SubagentRun>` —— `dsh-subagent/lib/index.js:3115`
 - `ctx.subagents.startContinuable(spec)`、`sendMessage(sender,targetId,content,options)`、`interrupt(targetSessionId, authority)`、`listChildren/listDescendants`
 - `ctx.agentTeams.spawnTeammate(caller, request)` / `sendMessage` / `createTask` / `waitForChange`（Cordis Inspect `host/Service` 实证；`dsh-experimental-agent-team` 要求持久化存储）
 - 模型面工具：`subagent`（`dsh-tool-subagent`）、`spawn_teammate`（`dsh-experimental-tool-agent-team`）、`send_message`/`interrupt_agent`/`list_agents`（`dsh-tool-subagent-control`）
@@ -188,12 +191,12 @@ export interface SubagentResult { readonly output: readonly ContentBlock[]; read
 `session.append(type, data, ...opts)` 只接收 `surfaceOp` / `sourceEventSeqs`（`dsh-session/lib/index.js:1441`、`lib/types/index.js:566-572`），**无法设置信封上的 `ignorable`**。而 `KNOWN_SESSION_EVENT_TYPES` 的注释逐字写着：
 
 > 「Downstream (out-of-repo) plugin events are outside this list by construction. The persisted `SessionEvent.ignorable` marker is the compatibility mechanism; **event-name registration was rejected**」
-> —— `/tmp/dsh-asar/out/@deepseek-ai/dsh-session/lib/types/known-event-types.js:13-18`
+> —— `dsh-session/lib/types/known-event-types.js:13-18`
 
 持久化读路径会拒绝未知且未标 `ignorable` 的事件类型，直接让**整个会话不可读**：
 
 > `if (!KNOWN_SESSION_EVENT_TYPES.has(event.type) && event.ignorable !== true) throw unsupported('session "..." contains event type "..." unknown to this harness and not marked ignorable; refusing to interpret the log')`
-> —— `/tmp/dsh-asar/out/@deepseek-ai/dsh-session-persistence/lib/index.js:184`
+> —— `dsh-session-persistence/lib/index.js:184`
 
 `TryDing-T/dsh-Plugin--ChineseChess` 的 README 正是踩了这个坑：「旧版本（≤0.1.16）的历史会话若包含未标记 `ignorable: true` 的 `xiangqi/change`，当前 DSH 可能拒绝读取」——新版本因此**不再产生任何自定义会话事件**。
 
@@ -263,7 +266,7 @@ export interface SubagentResult { readonly output: readonly ContentBlock[]; read
   - **刻意不 inject `llm`**。源码注释逐字：「`llm` is deliberately NOT in this list: the `llm` service (LlmRuntime) is provided by the DSH host process, never by the web-boot context where this client plugin runs. Declaring it here would make the web boot sweep report `pending (waiting for service: llm)` and fail activation — cordis inject waiting has no timeout.」
   - 用 `ctx.get('llm')` 取，取不到就让点评静默降级为 `null`
   - provider 取 `ctx.llm.listProviders()[0].id`，model **硬编码回退到 `'deepseek-v4-pro'`**（作者注明这是本部署的 opencode-go 路由）
-  - 支持 `settings.llmOverride = { base, key, model }` 直连 OpenAI 兼容 `/chat/completions`
+  - 支持 `settings.llmOverride = { base, key, model }` 直连 OpenAI 兼容 `chat/completions`
 - **已实现**：悬浮宠物、可拖拽 + 位置持久化、小面板/全屏棋盘、难度切换、悔棋、新局、开局定式名、三国杀风格台词、LLM 点评（pro/fun 两风格）、状态持久化（浏览器本地）
 - **未实现**：联网对战、外部 UCI 引擎、开局库、音频播报；长将长捉为简化规则
 - **值得注意的两个瑕疵**：`INTEGRATION.md` 里的 `cordis.patch.yml` 形状（`plugins: - plugin: ...`）与实际 patch 文件（`- insert: - id/name`）不一致，且包名 `dsh-xiangqi` 与 npm 上的保留名冲突
@@ -300,7 +303,7 @@ export interface SubagentResult { readonly output: readonly ContentBlock[]; read
 
 ### 3.5 `dsh-task-board` / `dsh-aionui-panel`
 
-两者都不是独立 npm 包（`https://registry.npmjs.org/dsh-task-board` 与 `/dsh-aionui-panel` 均返回 `{"error":"Not found"}`），而是 **`DamonKoy/dsh-web-ui`（即 `@linxin666` 全家桶）** 里的子包，通过聚合包 `@linxin666/dsh-web-ui-all` 发布：
+两者都不是独立 npm 包（`https://registry.npmjs.org/dsh-task-board` 与 `dsh-aionui-panel` 均返回 `{"error":"Not found"}`），而是 **`DamonKoy/dsh-web-ui`（即 `@linxin666` 全家桶）** 里的子包，通过聚合包 `@linxin666/dsh-web-ui-all` 发布：
 
 | 包 | 仓库路径 | 版本 | UI 承载 | 干啥 |
 | --- | --- | --- | --- | --- |
@@ -327,13 +330,13 @@ export interface SubagentResult { readonly output: readonly ContentBlock[]; read
 
 **通行契约（无论哪种做法，产物形态一致）**：
 
-1. `package.json` 声明 `dsh.client = { platform: 'web', inject?: string[], external?: string[], immediately?: boolean }`，并用 `exports["./client"]` 指向那个 bundle 文件。声明校验器逐字在 `/tmp/dsh-asar/out/@deepseek-ai/dsh-client-modules/lib/index.js:57-73`（`platform` 必填且必须是字符串；`inject`/`external` 是可选字符串数组；`immediately` 可选布尔）。
+1. `package.json` 声明 `dsh.client = { platform: 'web', inject?: string[], external?: string[], immediately?: boolean }`，并用 `exports["./client"]` 指向那个 bundle 文件。声明校验器逐字在 `dsh-client-modules/lib/index.js:57-73`（`platform` 必填且必须是字符串；`inject`/`external` 是可选字符串数组；`immediately` 可选布尔）。
 2. bundle 执行时必须调用 `window.__ModuleLoader__.load({ id: <包名>, factory: (require) => exports })`；`<包名>/client` 会被归一化成包名（`stripClientSuffix`，同文件 `:96-98`）。
 3. `factory` 返回的必须是合法 Cordis 客户端插件（`apply(ctx)` / `inject`）。
 4. `require` 能解析的只有**冻结的平台基座表** + 已登记工厂；其余必须在 `dsh.client.external` 里声明。
 5. 宿主**不校验产物来源或构建痕迹**——README 只说「The host serves built client bundles, so `pnpm run build` must have produced each `lib/client.js` before launch; a missing bundle fails activation loudly」，即**只要求文件存在**，不要求它是打包器产物。这正是手写免构建可行的根因，`9527ccccccc/dsh-xiangqi` 是活证据。
 
-**平台基座表（PLATFORM_MODULES）**：本机解包产物里**没有**这张表——它由 web shell（`apps/web`，不在 `@deepseek-ai/*` 包内）通过 `createClientModuleSystem({ staticModules })` 注入（`/tmp/dsh-asar/out/@deepseek-ai/dsh-client-modules/lib/client.js:548,853`）。社区反向记录了一份（`DamonKoy/dsh-web-ui` 的 `shared/web-platform.ts`，URL：<https://raw.githubusercontent.com/DamonKoy/dsh-web-ui/HEAD/shared/web-platform.ts>）：
+**平台基座表（PLATFORM_MODULES）**：本机解包产物里**没有**这张表——它由 web shell（`apps/web`，不在 `@deepseek-ai/*` 包内）通过 `createClientModuleSystem({ staticModules })` 注入（`dsh-client-modules/lib/client.js:548,853`）。社区反向记录了一份（`DamonKoy/dsh-web-ui` 的 `shared/web-platform.ts`，URL：<https://raw.githubusercontent.com/DamonKoy/dsh-web-ui/HEAD/shared/web-platform.ts>）：
 
 ```ts
 export const PLATFORM_MODULES = [

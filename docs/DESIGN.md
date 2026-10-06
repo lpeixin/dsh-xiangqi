@@ -137,7 +137,7 @@
 | NFR5 | 面板不阻塞会话 | 打开棋盘不触发模型调用；只有 AI 轮次才产生模型交互 |
 | NFR6 | 失败不致命 | 任何棋盘/引擎异常都不得让会话进入不可用状态；错误就地降级并在面板内提示 |
 | NFR7 | 可测试 | `node --test` 全绿；引擎行覆盖率 ≥ 90%、分支 ≥ 85% |
-| NFR8 | 安装体积 | tarball ≤ 300 KB（不含 README 图片时 ≤ 250 KB） |
+| NFR8 | 安装体积 | tarball ≤ 500 KB（gzip，**含**文档与 README 图片）。实测构成：代码 ≈ 190 KB、文档 ≈ 105 KB、README 图片 ≤ 135 KB、其余 ≈ 15 KB。**说明**：原目标 300 KB 是在文档与截图进入包内之前的估算，实测无法达成（仅代码 + 文档就 ≈ 290 KB）。真正影响安装体验的是**运行期足迹**——零运行时依赖、安装不执行任何脚本、无构建步骤；tarball 体积不构成安装瓶颈。图片已按「够用且小」优化（调色板 PNG + 缩小截图：271 KB → 132 KB） |
 | NFR9 | 安装方式 | 支持 `file:` 本地路径与 GitHub 两种安装方式（与 `dsh-project-compass` / `dsh-qualityforge` 一致） |
 
 ### 3.3 明确不做（Non-goals）
@@ -1474,7 +1474,7 @@ qf_exec  → qf_fixplan (scope=p0-p1)
 **A. 首次安装（在 DSH 会话内，用插件管理器）**
 
 ```
-plugin_manager { action: "install_bundle", target: "/Users/peixinliu/Develop/ai/harness-plugins/dsh-xiangqi-mate" }
+plugin_manager { action: "install_bundle", target: "<本仓库的绝对路径>" }
 plugin_manager { action: "list_plugins" }        # 取回确切 id
 plugin_manager { action: "set_plugin", target: "<id>", enabled: true }
 ```
