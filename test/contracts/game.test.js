@@ -207,3 +207,30 @@ test('自然限着以**配置**为准：调严与调宽都必须生效（回归 
   assert.equal(statusAt(120, 120), 'draw-fifty');
   assert.equal(statusAt(80, 120), 'playing');
 });
+
+test('新对局必须重置棋谱，且 revision 跨对局单调递增（回归：点新对局棋谱没重置）', async () => {
+  // 曾经的 bug：createState 把 revision 硬编码成 1，于是新对局的投影 revision 比上一局**小**，
+  // 客户端栅栏（按设计丢弃过期投影）把它判成 stale 丢掉 —— 用户看到"点了新对局，
+  // 棋盘与棋谱还是上一局"。修法是让 revision 跨对局续增。
+  const engine = await testEngine();
+  const port = createOpponentPort({ ctx: undefined, config: { opponent: { mode: 'local' } } });
+  const service = createGameService({ ctx: undefined, config: { opponent: { mode: 'local' } }, track: (task) => task, opponent: port });
+  const cwd = await tempCwd();
+  try {
+    const before = await service.newGame({ id: 'session-new-reset', cwd, side: 'r', opponent: 'local' });
+    const move = engine.iccsToMove(before.position, 'h2e2');
+    const played = await service.playMove({ id: 'session-new-reset', cwd, actor: 'hero', input: engine.moveToIccs(move), ms: 5 });
+    assert.ok(played.state.history.length >= 1, '先走一手，棋谱里应有记录');
+    const grown = played.state.revision;
+    assert.ok(grown > before.revision, 'revision 应随走子递增');
+
+    const restarted = await service.newGame({ id: 'session-new-reset', cwd, side: 'r', opponent: 'local' });
+    assert.equal(restarted.history.length, 0, '新对局必须清空棋谱');
+    assert.ok(
+      restarted.revision > grown,
+      `新对局的 revision 必须大于上一局（${restarted.revision} 应 > ${grown}），否则客户端栅栏会丢弃它`,
+    );
+  } finally {
+    await service.dispose();
+  }
+});
